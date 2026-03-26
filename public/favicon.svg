@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Compass circle -->
+  <circle cx="50" cy="50" r="42" fill="none" stroke="#c9a654" stroke-width="4"/>
+  <!-- Compass points -->
+  <polygon points="50,5 54,20 50,15 46,20" fill="#c9a654"/>
+  <polygon points="50,95 54,80 50,85 46,80" fill="#c9a654"/>
+  <polygon points="5,50 20,54 15,50 20,46" fill="#c9a654"/>
+  <polygon points="95,50 80,54 85,50 80,46" fill="#c9a654"/>
+  <!-- Sunrise rays -->
+  <path d="M30,45 L50,45 L70,45 L65,35 L55,35 L50,25 L45,35 L35,35 Z" fill="#f5c842"/>
+  <!-- Buildings silhouette -->
+  <rect x="42" y="35" width="6" height="15" fill="#1e3a5f"/>
+  <rect x="52" y="38" width="6" height="12" fill="#1e3a5f"/>
+  <!-- Green path/field -->
+  <path d="M25,70 Q50,50 75,70 L65,70 Q50,60 35,70 Z" fill="#2d8a4e"/>
+</svg>

@@ -1,0 +1,34 @@
+.vision {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  padding: var(--spacing-4xl) 0;
+}
+
+.vision-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--spacing-xl);
+}
+
+.vision-card {
+  text-align: center;
+  padding: var(--spacing-2xl);
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--border-radius);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.vision-card h3 {
+  color: var(--color-accent-gold);
+  font-size: var(--font-size-lg);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  margin-bottom: var(--spacing-md);
+}
+
+.vision-values {
+  font-size: var(--font-size-2xl);
+  color: white;
+  font-weight: 500;
+  margin: 0;
+  line-height: 1.4;
+}

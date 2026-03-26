@@ -1,0 +1,104 @@
+.mission {
+  background-color: var(--color-background);
+}
+
+.mission h2 {
+  text-align: center;
+  font-size: var(--font-size-3xl);
+  margin-bottom: var(--spacing-2xl);
+  color: var(--color-primary);
+}
+
+.mission-content {
+  max-width: 800px;
+  margin: 0 auto var(--spacing-3xl);
+  text-align: center;
+}
+
+.mission-lead {
+  font-size: var(--font-size-xl);
+  line-height: 1.8;
+  color: var(--color-text);
+  margin-bottom: var(--spacing-lg);
+}
+
+.mission-content p {
+  font-size: var(--font-size-lg);
+  line-height: 1.7;
+  color: var(--color-text-light);
+  margin-bottom: var(--spacing-md);
+}
+
+.mission-highlight {
+  font-size: var(--font-size-xl);
+  color: var(--color-primary);
+  font-weight: 500;
+  font-style: italic;
+  margin-top: var(--spacing-lg);
+}
+
+.ecosystem {
+  background: var(--color-surface);
+  padding: var(--spacing-2xl);
+  border-radius: var(--border-radius);
+}
+
+.ecosystem h3 {
+  text-align: center;
+  font-size: var(--font-size-2xl);
+  color: var(--color-primary-dark);
+  margin-bottom: var(--spacing-sm);
+}
+
+.ecosystem-subtitle {
+  text-align: center;
+  font-size: var(--font-size-lg);
+  color: var(--color-text-light);
+  margin-bottom: var(--spacing-2xl);
+}
+
+.ecosystem-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--spacing-xl);
+}
+
+.ecosystem-item {
+  display: flex;
+  gap: var(--spacing-md);
+  align-items: flex-start;
+  background: var(--color-background);
+  padding: var(--spacing-lg);
+  border-radius: var(--border-radius);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.ecosystem-icon {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  background: var(--color-primary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ecosystem-icon svg {
+  width: 24px;
+  height: 24px;
+  color: white;
+}
+
+.ecosystem-item strong {
+  display: block;
+  color: var(--color-primary-dark);
+  font-size: var(--font-size-lg);
+  margin-bottom: var(--spacing-xs);
+}
+
+.ecosystem-item p {
+  color: var(--color-text-light);
+  margin: 0;
+  line-height: 1.5;
+}

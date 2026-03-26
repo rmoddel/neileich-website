@@ -1,0 +1,72 @@
+.header {
+  background-color: var(--color-background);
+  border-bottom: 1px solid var(--color-border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-md) var(--spacing-lg);
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  text-decoration: none;
+}
+
+.logo-hebrew {
+  font-size: var(--font-size-3xl);
+  font-weight: 700;
+  color: var(--color-primary);
+  line-height: 1;
+}
+
+.logo-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.logo-name {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--color-primary);
+  letter-spacing: 0.1em;
+}
+
+.logo-tagline {
+  font-size: var(--font-size-sm);
+  color: var(--color-primary);
+  letter-spacing: 0.05em;
+}
+
+.nav {
+  display: flex;
+  gap: var(--spacing-xl);
+}
+
+.nav a {
+  color: var(--color-text);
+  font-weight: 500;
+  transition: color var(--transition);
+}
+
+.nav a:hover {
+  color: var(--color-primary);
+}
+
+@media (max-width: 768px) {
+  .header-content {
+    flex-direction: column;
+    gap: var(--spacing-md);
+  }
+
+  .nav {
+    gap: var(--spacing-lg);
+  }
+}

@@ -1,0 +1,173 @@
+.programs {
+  background: var(--color-background);
+}
+
+.programs h2 {
+  text-align: center;
+  font-size: var(--font-size-3xl);
+  color: var(--color-primary);
+  margin-bottom: var(--spacing-2xl);
+}
+
+.programs-intro {
+  max-width: 800px;
+  margin: 0 auto var(--spacing-2xl);
+  text-align: center;
+}
+
+.intro-lead {
+  font-size: var(--font-size-xl);
+  color: var(--color-text);
+  line-height: 1.7;
+  margin-bottom: var(--spacing-lg);
+}
+
+.intro-emphasis {
+  font-size: var(--font-size-2xl);
+  color: var(--color-primary);
+  margin-bottom: var(--spacing-md);
+}
+
+.programs-intro p {
+  font-size: var(--font-size-lg);
+  color: var(--color-text-light);
+  line-height: 1.6;
+}
+
+.programs-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-2xl);
+}
+
+.detail-card {
+  background: var(--color-surface);
+  padding: var(--spacing-xl);
+  border-radius: var(--border-radius);
+  text-align: center;
+}
+
+.detail-card p {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  color: var(--color-text);
+  line-height: 1.6;
+}
+
+.detail-card.highlight {
+  background: var(--color-primary);
+  color: white;
+}
+
+.detail-card.highlight p {
+  color: white;
+}
+
+.detail-card.highlight strong {
+  color: var(--color-accent-gold);
+}
+
+.programs-message {
+  text-align: center;
+  margin-bottom: var(--spacing-2xl);
+}
+
+.message-main {
+  font-size: var(--font-size-2xl);
+  color: var(--color-primary-dark);
+  font-weight: 600;
+  margin-bottom: var(--spacing-sm);
+}
+
+.message-secondary {
+  font-size: var(--font-size-lg);
+  color: var(--color-text-light);
+  font-style: italic;
+}
+
+.lesson-box {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+  color: white;
+  padding: var(--spacing-2xl);
+  border-radius: var(--border-radius);
+  text-align: center;
+  max-width: 800px;
+  margin: 0 auto var(--spacing-2xl);
+}
+
+.lesson-intro {
+  font-size: var(--font-size-base);
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: var(--spacing-sm);
+}
+
+.lesson-text {
+  font-size: var(--font-size-xl);
+  line-height: 1.6;
+  margin-bottom: var(--spacing-md);
+}
+
+.lesson-highlight {
+  font-size: var(--font-size-lg);
+  color: var(--color-accent-gold);
+  font-weight: 600;
+  margin: 0;
+}
+
+.progression {
+  text-align: center;
+  font-size: var(--font-size-lg);
+  color: var(--color-text);
+  margin-bottom: var(--spacing-2xl);
+}
+
+.program-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-2xl);
+}
+
+.program-list span {
+  background: var(--color-primary);
+  color: white;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-radius: 50px;
+  font-size: var(--font-size-base);
+  font-weight: 500;
+}
+
+.beautiful-sight {
+  text-align: center;
+  margin-bottom: var(--spacing-2xl);
+}
+
+.beautiful-sight p {
+  font-size: var(--font-size-2xl);
+  color: var(--color-primary);
+  font-style: italic;
+  font-weight: 500;
+}
+
+.second-home {
+  text-align: center;
+  background: var(--color-surface);
+  padding: var(--spacing-2xl);
+  border-radius: var(--border-radius);
+}
+
+.second-home p:first-child {
+  font-size: var(--font-size-lg);
+  color: var(--color-text-light);
+  margin-bottom: var(--spacing-md);
+}
+
+.second-home-emphasis {
+  font-size: var(--font-size-xl);
+  color: var(--color-primary-dark);
+  font-weight: 500;
+  line-height: 1.6;
+  margin: 0;
+}

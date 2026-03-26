@@ -1,0 +1,105 @@
+.testimonials {
+  background: var(--color-background);
+}
+
+.testimonials h2 {
+  text-align: center;
+  font-size: var(--font-size-2xl);
+  color: var(--color-primary);
+  margin-bottom: var(--spacing-3xl);
+  font-style: italic;
+}
+
+.testimonials-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-3xl);
+}
+
+.testimonial-card {
+  background: var(--color-surface);
+  padding: var(--spacing-xl);
+  border-radius: var(--border-radius);
+  position: relative;
+}
+
+.quote-mark {
+  position: absolute;
+  top: var(--spacing-md);
+  left: var(--spacing-lg);
+  font-size: 4rem;
+  color: var(--color-primary);
+  opacity: 0.15;
+  font-family: Georgia, serif;
+  line-height: 1;
+}
+
+.testimonial-quote {
+  font-size: var(--font-size-lg);
+  color: var(--color-text);
+  line-height: 1.7;
+  margin-bottom: var(--spacing-lg);
+  position: relative;
+  z-index: 1;
+}
+
+.testimonial-author {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--spacing-md);
+}
+
+.author-name {
+  font-weight: 600;
+  color: var(--color-primary-dark);
+}
+
+.author-title {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-light);
+}
+
+.respect-box {
+  text-align: center;
+  background: var(--color-primary);
+  padding: var(--spacing-2xl);
+  border-radius: var(--border-radius);
+  margin-bottom: var(--spacing-3xl);
+}
+
+.respect-box p {
+  font-size: var(--font-size-xl);
+  color: white;
+  margin-bottom: var(--spacing-sm);
+}
+
+.respect-box p:last-child {
+  margin-bottom: 0;
+}
+
+.respect-conclusion {
+  font-size: var(--font-size-2xl);
+  color: var(--color-accent-gold);
+  font-weight: 600;
+  margin-top: var(--spacing-md);
+}
+
+.movement {
+  text-align: center;
+}
+
+.movement-text {
+  font-size: var(--font-size-2xl);
+  color: var(--color-text);
+  font-style: italic;
+  margin-bottom: var(--spacing-md);
+}
+
+.movement-brand {
+  font-size: var(--font-size-3xl);
+  color: var(--color-primary);
+  font-weight: 700;
+  letter-spacing: 0.2em;
+}

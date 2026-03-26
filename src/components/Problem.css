@@ -1,0 +1,90 @@
+.problem {
+  background: linear-gradient(180deg, var(--color-surface) 0%, var(--color-background) 100%);
+}
+
+.problem-content {
+  max-width: 700px;
+  margin: 0 auto var(--spacing-3xl);
+  text-align: center;
+}
+
+.problem h2 {
+  font-size: var(--font-size-3xl);
+  color: var(--color-primary-dark);
+  margin-bottom: var(--spacing-xl);
+}
+
+.problem-lead {
+  font-size: var(--font-size-xl);
+  color: var(--color-text);
+  font-weight: 500;
+  margin-bottom: var(--spacing-md);
+}
+
+.problem-text {
+  font-size: var(--font-size-lg);
+  color: var(--color-text-light);
+  line-height: 1.7;
+  margin-bottom: var(--spacing-md);
+}
+
+.problem-solution {
+  margin-top: var(--spacing-2xl);
+  padding: var(--spacing-xl);
+  background: var(--color-primary);
+  border-radius: var(--border-radius);
+}
+
+.solution-intro {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: var(--font-size-lg);
+  margin-bottom: var(--spacing-sm);
+}
+
+.solution-highlight {
+  color: var(--color-accent-gold);
+  font-size: var(--font-size-2xl);
+  font-weight: 600;
+  margin: 0;
+}
+
+.realization {
+  max-width: 800px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.realization-badge {
+  display: inline-flex;
+  flex-direction: column;
+  background: var(--color-primary-dark);
+  color: white;
+  padding: var(--spacing-lg) var(--spacing-2xl);
+  border-radius: var(--border-radius);
+  margin-bottom: var(--spacing-xl);
+}
+
+.realization-badge span {
+  font-size: var(--font-size-xl);
+}
+
+.realization-badge .highlight {
+  font-size: var(--font-size-2xl);
+  color: var(--color-accent-gold);
+  font-weight: 700;
+}
+
+.realization p {
+  font-size: var(--font-size-lg);
+  color: var(--color-text-light);
+  line-height: 1.8;
+  margin-bottom: var(--spacing-md);
+}
+
+.realization-emphasis {
+  font-size: var(--font-size-xl);
+  color: var(--color-primary);
+  font-weight: 500;
+  font-style: italic;
+  margin-top: var(--spacing-lg);
+}
