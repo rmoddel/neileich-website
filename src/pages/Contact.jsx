@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { sendMessage } from '../utils/sendMessage'
 import './Contact.css'
 
 function Contact() {
@@ -11,17 +12,28 @@ function Contact() {
     optIn: ''
   })
   const [submitted, setSubmitted] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState(null)
 
   const handleChange = (e) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    // Handle form submission here
-    console.log('Form submitted:', formData)
-    setSubmitted(true)
+    setIsLoading(true)
+    setError(null)
+
+    const result = await sendMessage(formData)
+
+    setIsLoading(false)
+
+    if (result.ok) {
+      setSubmitted(true)
+    } else {
+      setError(result.error)
+    }
   }
 
   if (submitted) {
@@ -89,6 +101,11 @@ function Contact() {
               required
               placeholder="(555) 555-5555"
             />
+            <p className="field-disclaimer">
+              We use your phone number to respond to your inquiry and, only if you opt in
+              below, to send text messages from Neileich. No mobile information will be
+              shared with third parties.
+            </p>
           </div>
 
           <div className="form-group">
@@ -111,6 +128,10 @@ function Contact() {
                 By opting in, you agree to receive recurring messages from Neileich regarding
                 program updates, event notifications, and community announcements. Message frequency
                 varies. Message and data rates may apply.
+              </p>
+              <p>
+                No mobile information will be shared with third parties. Your consent to
+                receive text messages is not a condition of receiving services from Neileich.
               </p>
               <p>
                 If you need support you can call or text HELP to our support line,
@@ -147,8 +168,18 @@ function Contact() {
             </div>
           </div>
 
-          <button type="submit" className="btn btn-primary submit-btn">
-            Submit
+          {error && (
+            <div className="error-message">
+              {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            className="btn btn-primary submit-btn"
+            disabled={isLoading}
+          >
+            {isLoading ? 'Sending...' : 'Submit'}
           </button>
         </form>
 
@@ -161,7 +192,8 @@ function Contact() {
             </div>
             <div className="contact-method">
               <strong>Location</strong>
-              <p>Lakewood, NJ</p>
+              <p>44 Coles Way</p>
+              <p>Lakewood, NJ 08701</p>
             </div>
           </div>
         </div>

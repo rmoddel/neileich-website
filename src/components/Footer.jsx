@@ -13,6 +13,9 @@ function Footer() {
             <span className="footer-name">Neileich Lakewood Commons</span>
           </div>
           <p className="footer-tagline">Building belonging. Thriving children. Strong Kehila.</p>
+          <p className="footer-legal-identity">
+            Neileich is a project of Bais Medrash of Lakewood Commons, a 501(c)(3) organization.
+          </p>
         </div>
 
         <div className="footer-links">
@@ -31,7 +34,8 @@ function Footer() {
           <div className="footer-column">
             <h4>Contact</h4>
             <p>info@neileich.org</p>
-            <p>Lakewood, NJ</p>
+            <p>44 Coles Way</p>
+            <p>Lakewood, NJ 08701</p>
           </div>
         </div>
 

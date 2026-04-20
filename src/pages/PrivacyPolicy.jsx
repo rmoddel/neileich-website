@@ -6,7 +6,7 @@ function PrivacyPolicy() {
     <div className="legal-page section">
       <div className="container">
         <h1>Privacy Policy</h1>
-        <p className="last-updated">Last Updated: March 2025</p>
+        <p className="last-updated">Last Updated: April 2026</p>
 
         <div className="legal-content">
           <section>
@@ -15,6 +15,8 @@ function PrivacyPolicy() {
               Neileich ("we," "our," or "us") is committed to protecting your privacy.
               This Privacy Policy explains how we collect, use, disclose, and safeguard
               your information when you visit our website or interact with our services.
+              Neileich is a project of Bais Medrash of Lakewood Commons, a 501(c)(3)
+              organization.
             </p>
           </section>
 
@@ -49,12 +51,13 @@ function PrivacyPolicy() {
           <section className="highlight-section">
             <h2>Mobile Information and Data Privacy</h2>
             <p>
-              <strong>Mobile information will not be shared with third parties/affiliates
-              for marketing/promotional purposes.</strong>
+              <strong>No mobile information will be shared with third parties.</strong>
             </p>
             <p>
-              All the above categories exclude text messaging originator opt-in data and
-              consent; this information will not be shared with any third parties.
+              Mobile information will not be shared with third parties or affiliates for
+              marketing or promotional purposes. All the above categories exclude text
+              messaging originator opt-in data and consent; this information will not be
+              shared with any third parties.
             </p>
           </section>
 
@@ -115,6 +118,7 @@ function PrivacyPolicy() {
             </p>
             <ul>
               <li>Email: info@neileich.org</li>
+              <li>Address: 44 Coles Way, Lakewood, NJ 08701</li>
               <li>Website: <Link to="/contact">Contact Form</Link></li>
             </ul>
           </section>
