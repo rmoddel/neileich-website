@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { sendMessage } from '../utils/sendMessage'
+import { getEmailEnvDebugSummary } from '../utils/env'
 import './Contact.css'
 
 function Contact() {
+  const envDebug = import.meta.env.DEV ? getEmailEnvDebugSummary() : null
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -61,6 +63,12 @@ function Contact() {
         <div className="contact-header">
           <h1>Contact Us</h1>
           <p>We'd love to hear from you. Fill out the form below to get in touch.</p>
+          {envDebug && envDebug.missingKeys.length > 0 && (
+            <p className="field-disclaimer">
+              Local env debug: missing {envDebug.missingKeys.join(', ')}. Vite only loads
+              `VITE_` vars from env files at startup, so update `.env.local` and restart `npm run dev`.
+            </p>
+          )}
         </div>
 
         <form className="contact-form" onSubmit={handleSubmit}>

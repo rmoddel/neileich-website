@@ -49,6 +49,22 @@ npm run dev
 
 The site will be available at `http://localhost:5173`
 
+### Local environment variables
+
+Vite only exposes variables prefixed with `VITE_`, and it reads them when the dev server starts.
+
+1. Copy `.env.example` to `.env.local`
+2. Fill in the real values
+3. Restart `npm run dev`
+
+Example:
+
+```bash
+cp .env.example .env.local
+```
+
+The contact form now logs a local-only env debug summary in the browser console and shows a dev-only warning when required keys are missing.
+
 ### Build for production
 
 ```bash

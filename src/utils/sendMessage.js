@@ -1,18 +1,36 @@
+import { getEmailEnvConfig } from './env'
+
 export async function sendMessage({ name, email, phone, message, optIn }) {
-  const apiUrl = import.meta.env.VITE_EMAIL_API_URL
-  const apiSecret = import.meta.env.VITE_API_SECRET
-  const from = import.meta.env.VITE_FROM_EMAIL
-  const to = import.meta.env.VITE_TO_EMAIL
+  const {
+    apiUrl,
+    apiSecret,
+    from,
+    to,
+    missingKeys
+  } = getEmailEnvConfig()
 
   // Validate configuration
-  if (!apiUrl || !apiSecret || !from || !to) {
+  if (missingKeys.length > 0) {
     return {
       ok: false,
-      error: 'Email service is not configured. Please contact the administrator.'
+      error: import.meta.env.DEV
+        ? `Email service is not configured. Missing: ${missingKeys.join(', ')}. Check .env.local and restart Vite.`
+        : 'Email service is not configured. Please contact the administrator.'
     }
   }
 
   try {
+    const subject = `Contact Form Submission from ${name}`
+    const text = [
+      `Name: ${name}`,
+      `Email: ${email}`,
+      `Phone: ${phone}`,
+      `Text message opt-in: ${optIn === 'yes' ? 'Yes' : 'No'}`,
+      '',
+      'Message:',
+      message || '(No message provided)'
+    ].join('\n')
+
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
@@ -22,12 +40,8 @@ export async function sendMessage({ name, email, phone, message, optIn }) {
       body: JSON.stringify({
         from,
         to,
-        subject: `Contact Form Submission from ${name}`,
-        name,
-        email,
-        phone,
-        message,
-        optIn: optIn === 'yes'
+        subject,
+        text
       })
     })
 
@@ -35,7 +49,7 @@ export async function sendMessage({ name, email, phone, message, optIn }) {
       const errorData = await response.json().catch(() => ({}))
       return {
         ok: false,
-        error: errorData.message || 'Failed to send message. Please try again.'
+        error: errorData.message || errorData.error || 'Failed to send message. Please try again.'
       }
     }
 
