@@ -144,7 +144,7 @@ function Contact() {
               <p>
                 If you need support you can call or text HELP to our support line,
                 visit our website at <Link to="/">neileich.org</Link>, or email us at
-                info@neileich.org. Reply STOP to any text message you receive from Neileich to opt-out.
+                neileichorg@gmail.com. Reply STOP to any text message you receive from Neileich to opt-out.
               </p>
               <p>
                 For more information, visit our <Link to="/privacy-policy">privacy policy</Link> or
@@ -196,10 +196,11 @@ function Contact() {
           <div className="contact-methods">
             <div className="contact-method">
               <strong>Email</strong>
-              <p>info@neileich.org</p>
+              <p>neileichorg@gmail.com</p>
             </div>
             <div className="contact-method">
-              <strong>Location</strong>
+              <strong>Mailing Address</strong>
+              <p>Bais Medrash of Lakewood Commons</p>
               <p>44 Coles Way</p>
               <p>Lakewood, NJ 08701</p>
             </div>

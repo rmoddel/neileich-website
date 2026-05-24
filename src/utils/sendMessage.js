@@ -20,7 +20,7 @@ export async function sendMessage({ name, email, phone, message, optIn }) {
   }
 
   try {
-    const subject = `Contact Form Submission from ${name}`
+    const subject = `Neileich Contact Form Submission from `
     const text = [
       `Name: ${name}`,
       `Email: ${email}`,

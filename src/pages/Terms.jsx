@@ -43,7 +43,7 @@ function Terms() {
             <div className="terms-box">
               <p><strong>Message Frequency:</strong> Message frequency varies based on program activities and events.</p>
               <p><strong>Rates:</strong> Message and data rates may apply.</p>
-              <p><strong>Support:</strong> For support, reply HELP or email us at info@neileich.org</p>
+              <p><strong>Support:</strong> For support, reply HELP or email us at neileichorg@gmail.com</p>
               <p><strong>Opt-Out:</strong> You can opt out at any time by replying STOP.</p>
               <p>For more information, visit our <Link to="/privacy-policy">Privacy Policy</Link>.</p>
             </div>
@@ -107,7 +107,7 @@ function Terms() {
               If you have questions about these Terms and Conditions, please contact us:
             </p>
             <ul>
-              <li>Email: info@neileich.org</li>
+              <li>Email: neileichorg@gmail.com</li>
               <li>Website: <Link to="/contact">Contact Form</Link></li>
             </ul>
           </section>

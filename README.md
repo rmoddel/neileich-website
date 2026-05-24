@@ -15,6 +15,12 @@ Neileich places the Shul at the center of a child's life, offering age-tailored 
 - React Router DOM
 - CSS (custom properties/variables)
 
+## Deployment
+
+This site is hosted on Vercel.
+
+If production `VITE_` environment variables are missing or stale, check the Vercel project environment settings and redeploy if needed. Do not debug this as an AWS Amplify issue.
+
 ## Project Structure
 
 ```
@@ -64,6 +70,8 @@ cp .env.example .env.local
 ```
 
 The contact form now logs a local-only env debug summary in the browser console and shows a dev-only warning when required keys are missing.
+
+For production, these same `VITE_` variables must also be defined in Vercel for the correct environment.
 
 ### Build for production
 

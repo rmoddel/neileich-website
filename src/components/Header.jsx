@@ -11,8 +11,8 @@ function Header() {
         </Link>
         <nav className="nav">
           <Link to="/">Home</Link>
-          <ScrollLink to="#mission">About</ScrollLink>
-          <ScrollLink to="#programs">Programs</ScrollLink>
+          <Link to="/about">Our Mission</Link>
+          {/* <ScrollLink to="#programs">Programs</ScrollLink> */}
           <Link to="/contact">Contact</Link>
         </nav>
       </div>
