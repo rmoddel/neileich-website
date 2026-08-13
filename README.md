@@ -93,6 +93,19 @@ npm run preview
 | `/contact` | Contact form with SMS opt-in disclosure |
 | `/privacy-policy` | Privacy policy page |
 | `/terms` | Terms and conditions page |
+| `/parnas-hayom` | Date-based sponsorship flow |
+
+## Parnas Hayom deployment
+
+See [PARNAS_HAYOM_INFRA_ASSESSMENT.md](./PARNAS_HAYOM_INFRA_ASSESSMENT.md) for the infrastructure decision. Before enabling the page in production:
+
+1. Provision managed Postgres and run `db/parnas_hayom.sql` once.
+2. Configure the server-only variables listed in `.env.example` in Vercel.
+3. Create a Stripe webhook for `/api/parnas-hayom/webhook` and subscribe to `checkout.session.completed`.
+4. Verify the Resend sending domain and configure the daily Vercel cron authorization secret.
+5. Connect an existing or managed identity provider before enabling the planned admin route; never expose an administrator token in the browser.
+
+For Parnas Hayom API testing locally, use `npm run dev:full` rather than Vite alone. Vite serves the React app but cannot execute Vercel Functions; the full-stack command serves both the app and `/api` functions on port 5173.
 
 ## 10DLC Compliance
 

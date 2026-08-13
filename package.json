@@ -5,14 +5,20 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:full": "vercel dev --listen 5173",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@hebcal/core": "^6.9.2",
+    "@hebcal/hdate": "^0.22.8",
+    "@neondatabase/serverless": "^1.1.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "react-router-dom": "^7.13.2"
+    "react-router-dom": "^7.13.2",
+    "resend": "^6.19.0",
+    "stripe": "^22.5.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
@@ -23,6 +29,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
+    "vercel": "^58.9.5",
     "vite": "^8.0.1"
   }
 }

@@ -1,4 +1,11 @@
 {
+  "devCommand": "npm run dev -- --port $PORT",
+  "crons": [
+    {
+      "path": "/api/cron/parnas-hayom",
+      "schedule": "15 9 * * *"
+    }
+  ],
   "rewrites": [
     {
       "source": "/(.*)",
