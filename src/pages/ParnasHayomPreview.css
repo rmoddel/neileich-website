@@ -1,55 +1,51 @@
-/* Portrait dedication sign: 8.5 × 11 proportions, reusable for print/display later. */
+/* The on-screen card and the printed Letter flyer deliberately share one layout. */
 .ph-preview {
+  --flyer-scale: 1;
   aspect-ratio: 8.5 / 11;
-  width: min(100%, 22rem);
-  min-height: 28.5rem;
+  width: min(100%, 33rem);
+  min-height: 42.7rem;
   margin: 2.25rem auto !important;
-  padding: 2.4rem 1.7rem !important;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
+  padding: calc(2.5rem * var(--flyer-scale)) calc(2rem * var(--flyer-scale)) !important;
+  display: grid;
+  grid-template-rows: 1fr 1.45fr 1fr;
+  text-align: center;
   background: linear-gradient(155deg, #1b4751 0%, #102d36 100%) !important;
   border: 1px solid rgba(231, 199, 126, .42);
   box-shadow: 0 16px 34px rgba(16, 45, 54, .18);
 }
-.ph-preview-brand { display: grid; justify-items: center; gap: .6rem; }
-.ph-preview-brand img { width: min(11rem, 72%); max-height: 4.5rem; object-fit: contain; }
-.ph-preview-brand span { display: block; color: #d9e6e2; font-size: .65rem; line-height: 1.45; letter-spacing: .025em; }
-.ph-preview-dedication { display: grid; gap: .8rem; justify-items: center; }
-.ph-preview-dedication p { margin: 0; color: #d8e5e2; font-family: inherit; font-size: .76rem; font-weight: 600; letter-spacing: .04em; }
-.ph-preview-dedication strong { margin: 0; color: #e7c77e; font-size: 1.05rem; font-weight: 500; }
-.ph-preview-dedication b { color: #fff7e3; font-family: Georgia, serif; font-size: clamp(1.45rem, 5vw, 1.2rem); font-weight: 400; line-height: 1.35; }
+
+.ph-preview-brand,
+.ph-preview-dedication,
+.ph-preview-details { display: grid; justify-items: center; width: 100%; }
+.ph-preview-brand { align-content: center; gap: calc(.8rem * var(--flyer-scale)); }
+.ph-preview-brand img { width: min(calc(13rem * var(--flyer-scale)), 76%); max-height: calc(5.3rem * var(--flyer-scale)); object-fit: contain; }
+.ph-preview-brand span { display: block; color: #d9e6e2; font-size: calc(.72rem * var(--flyer-scale)); line-height: 1.45; letter-spacing: .025em; }
+
+.ph-preview-dedication { align-content: center; gap: calc(1rem * var(--flyer-scale)); padding: calc(1.5rem * var(--flyer-scale)) 0; border-top: 1px solid rgba(255,255,255,.22); border-bottom: 1px solid rgba(255,255,255,.22); }
+.ph-preview-dedication p { margin: 0; color: #d8e5e2; font-family: inherit; font-size: calc(.9rem * var(--flyer-scale)); font-weight: 600; letter-spacing: .04em; }
+.ph-preview-dedication strong { margin: 0; color: #e7c77e; font-size: calc(1.25rem * var(--flyer-scale)); font-weight: 500; }
+.ph-preview-dedication b { color: #fff7e3; font-family: Georgia, serif; font-weight: 400; line-height: 1.35; }
 .ph-preview-hebrew { display: block; width: 100%; white-space: nowrap; letter-spacing: -.025em; }
-.ph-preview-hebrew-1 { font-size: clamp(1.8rem, 6.2vw, 2.3rem) !important; }
-.ph-preview-hebrew-2 { font-size: clamp(1.55rem, 5.4vw, 2rem) !important; }
-.ph-preview-hebrew-3 { font-size: clamp(1.27rem, 4.5vw, 1.68rem) !important; }
-.ph-preview-hebrew-4 { font-size: clamp(1rem, 3.6vw, 1.36rem) !important; }
-.ph-preview-details { display: grid; gap: .58rem; padding-top: 1.1rem; border-top: 1px solid rgba(255, 255, 255, .22); }
+.ph-preview-hebrew-1 { font-size: calc(2.65rem * var(--flyer-scale)) !important; }
+.ph-preview-hebrew-2 { font-size: calc(2.25rem * var(--flyer-scale)) !important; }
+.ph-preview-hebrew-3 { font-size: calc(1.85rem * var(--flyer-scale)) !important; }
+.ph-preview-hebrew-4 { font-size: calc(1.45rem * var(--flyer-scale)) !important; }
+
+.ph-preview-details { align-content: center; gap: calc(.75rem * var(--flyer-scale)); padding-top: calc(1.4rem * var(--flyer-scale)); }
 .ph-preview-details small { display: block; }
-.ph-preview-date { color: #f1d690 !important; font-size: .74rem !important; }
-.ph-preview-item { color: #fff !important; font-size: .9rem !important; font-weight: 700; }
-.ph-preview-donor { color: #d9e6e2 !important; font-size: .76rem !important; }
-.ph-print { display: block; width: min(100%, 22rem); margin: -1rem auto 2rem; border: 1px solid #a87825; border-radius: 8px; background: #fffaf0; color: #7a5718; padding: .72rem 1rem; font: 700 .86rem inherit; cursor: pointer; }
+.ph-preview-date { color: #f1d690 !important; font-size: calc(.88rem * var(--flyer-scale)) !important; }
+.ph-preview-donor { color: #d9e6e2 !important; font-size: calc(.9rem * var(--flyer-scale)) !important; }
+.ph-print { display: block; width: min(100%, 33rem); margin: -1rem auto 2rem; border: 1px solid #a87825; border-radius: 8px; background: #fffaf0; color: #7a5718; padding: .72rem 1rem; font: 700 .86rem inherit; cursor: pointer; }
 .ph-print:hover { background: #f5e7c8; }
-@media (max-width: 650px) { .ph-preview { width: min(100%, 19rem); min-height: 24.6rem; padding: 2rem 1.4rem !important; } }
+
+@media (max-width: 650px) {
+  .ph-preview { width: min(100%, 22rem); min-height: 28.5rem; padding: 2rem 1.45rem !important; }
+}
 
 @page { size: letter portrait; margin: 0; }
 @media print {
   body { background: #fff !important; }
   .header, .footer, .ph-hero, .ph-steps, .ph-card:not(.ph-form), .ph-form > :not(.ph-preview), .ph-print { display: none !important; }
   .app, main, .ph-page, .ph-shell, .ph-form { display: block !important; margin: 0 !important; padding: 0 !important; background: #fff !important; box-shadow: none !important; border: 0 !important; }
-  .ph-preview { width: 8.5in !important; height: 11in !important; min-height: 0 !important; aspect-ratio: auto !important; margin: 0 !important; border-radius: 0 !important; box-shadow: none !important; padding: .7in .78in !important; display: grid !important; grid-template-rows: 1fr 1.45fr 1fr !important; align-items: stretch !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-  .ph-preview-brand { align-content: center !important; gap: .2in !important; }
-  .ph-preview-brand img { width: 3.45in !important; max-height: 1.3in !important; }
-  .ph-preview-brand span { font-size: .16in !important; }
-  .ph-preview-dedication { align-content: center !important; gap: .3in !important; padding: .22in 0 !important; border-top: 1px solid rgba(255,255,255,.24); border-bottom: 1px solid rgba(255,255,255,.24); }
-  .ph-preview-dedication p { font-size: .22in !important; letter-spacing: .05em !important; }
-  .ph-preview-dedication strong { font-size: .36in !important; }
-  .ph-preview-hebrew-1 { font-size: .76in !important; }
-  .ph-preview-hebrew-2 { font-size: .64in !important; }
-  .ph-preview-hebrew-3 { font-size: .52in !important; }
-  .ph-preview-hebrew-4 { font-size: .42in !important; }
-  .ph-preview-details { align-content: center !important; gap: .19in !important; padding-top: .25in !important; border-top: 0 !important; }
-  .ph-preview-date { font-size: .22in !important; }
-  .ph-preview-donor { font-size: .21in !important; }
+  .ph-preview { --flyer-scale: 1.545; width: 8.5in !important; height: 11in !important; min-height: 0 !important; aspect-ratio: auto !important; margin: 0 !important; border-radius: 0 !important; box-shadow: none !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
 }
