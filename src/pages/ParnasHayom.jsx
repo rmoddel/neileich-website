@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { HDate } from "@hebcal/core";
-import IField from "@cardknox/react-ifields";
 import "./ParnasHayom.css";
 import "./ParnasHayomPreview.css";
 import "./ParnasHayomPayment.css";
@@ -85,9 +84,8 @@ export default function ParnasHayom() {
   const [checkoutError, setCheckoutError] = useState("");
   const [paying, setPaying] = useState(false);
   const [cardExpiry, setCardExpiry] = useState("");
-  const cardField = useRef(null);
-  const cvvField = useRef(null);
-  const paymentTokens = useRef({});
+  const tokenInputs = useRef(null);
+  const [ifieldsReady, setIfieldsReady] = useState(false);
   const paymentState = new URLSearchParams(window.location.search).get(
     "payment",
   );
@@ -103,6 +101,28 @@ export default function ParnasHayom() {
         setTypes(fallbackTypes);
         setSelectedType(fallbackTypes[0]);
       });
+  }, []);
+  useEffect(() => {
+    const initialize = () => {
+      if (window.setAccount && import.meta.env.VITE_SOLA_IFIELDS_KEY) {
+        window.setAccount(import.meta.env.VITE_SOLA_IFIELDS_KEY, "Neileich", "1.0.0");
+        setIfieldsReady(true);
+      }
+    };
+    const existing = document.getElementById("sola-ifields-script");
+    if (existing) {
+      existing.addEventListener("load", initialize);
+      initialize();
+      return () => existing.removeEventListener("load", initialize);
+    }
+    const script = document.createElement("script");
+    script.id = "sola-ifields-script";
+    script.src = "https://cdn.cardknox.com/ifields/2.15.2309.2601/ifields.min.js";
+    script.async = true;
+    script.addEventListener("load", initialize);
+    script.addEventListener("error", () => setCheckoutError("Secure card fields could not load. Please refresh and try again."));
+    document.head.appendChild(script);
+    return () => script.removeEventListener("load", initialize);
   }, []);
   useEffect(() => {
     if (!selectedType) return;
@@ -201,33 +221,26 @@ export default function ParnasHayom() {
       setPaying(false);
     }
   };
-  const receiveToken = (token) => {
-    paymentTokens.current[token.xTokenType] = token.xToken;
-    if (paymentTokens.current.card && paymentTokens.current.cvv) {
-      const { card, cvv } = paymentTokens.current;
-      paymentTokens.current = {};
-      processPayment(card, cvv);
-    }
-  };
   const checkout = (event) => {
     event.preventDefault();
     if (!selectedDate || !selectedType) return setCheckoutError("Please choose an available date.");
     if (!/^\d{4}$/.test(cardExpiry)) return setCheckoutError("Enter your card expiration as MMYY.");
-    if (!cardField.current || !cvvField.current) return setCheckoutError("Secure card fields are still loading. Please try again.");
+    if (!ifieldsReady || !tokenInputs.current || !window.getTokens) return setCheckoutError("Secure card fields are still loading. Please try again.");
     setPaying(true);
     setCheckoutError("");
-    paymentTokens.current = {};
-    cardField.current.getToken();
-    cvvField.current.getToken();
+    window.getTokens(() => {
+      const cardToken = tokenInputs.current.querySelector('[data-ifields-id="card-number-token"]')?.value;
+      const cvvToken = tokenInputs.current.querySelector('[data-ifields-id="cvv-token"]')?.value;
+      if (!cardToken || !cvvToken) {
+        setPaying(false);
+        return setCheckoutError("Please complete your card number and CVV.");
+      }
+      processPayment(cardToken, cvvToken);
+    });
   };
   const h = selectedDate && hebrew(selectedDate);
   const canRecurring = selectedType?.recurring_enabled;
   const previewLeadIn = dedicationLeadIn(selectedType?.name);
-  const ifieldsAccount = {
-    xKey: import.meta.env.VITE_SOLA_IFIELDS_KEY,
-    xSoftwareName: "Neileich",
-    xSoftwareVersion: "1.0.0",
-  };
   return (
     <div className="ph-page">
       <section className="ph-hero">
@@ -472,13 +485,17 @@ export default function ParnasHayom() {
             <h3>Secure payment</h3>
             <p>Your card details are securely handled by Sola Payments.</p>
             <label>Card number
-              <IField ref={cardField} type="card" account={ifieldsAccount} onToken={receiveToken} onError={(error) => setCheckoutError(error.errorMessage || "Please check your card number.")} options={{ autoFormat: true, placeholder: "Card number", iFieldstyle: { border: "0", fontSize: "16px", height: "42px", width: "100%" } }} />
+              <iframe title="Secure card number" data-ifields-id="card-number" data-ifields-placeholder="Card number" src="https://cdn.cardknox.com/ifields/2.15.2309.2601/ifield.htm" />
             </label>
             <div className="ph-payment-grid">
               <label>Expiration (MMYY)<input value={cardExpiry} onChange={(event) => setCardExpiry(event.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" autoComplete="cc-exp" placeholder="MMYY" required /></label>
               <label>CVV
-                <IField ref={cvvField} type="cvv" account={ifieldsAccount} onToken={receiveToken} onError={(error) => setCheckoutError(error.errorMessage || "Please check your CVV.")} options={{ placeholder: "CVV", iFieldstyle: { border: "0", fontSize: "16px", height: "42px", width: "100%" } }} />
+                <iframe title="Secure card CVV" data-ifields-id="cvv" data-ifields-placeholder="CVV" src="https://cdn.cardknox.com/ifields/2.15.2309.2601/ifield.htm" />
               </label>
+            </div>
+            <div ref={tokenInputs}>
+              <input name="xCardNum" data-ifields-id="card-number-token" type="hidden" />
+              <input name="xCVV" data-ifields-id="cvv-token" type="hidden" />
             </div>
           </section>
           <div className="ph-preview">
