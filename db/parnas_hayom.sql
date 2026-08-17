@@ -43,7 +43,7 @@ begin
   return query select v_id, v_type.price_cents;
 end $$;
 create or replace function confirm_paid_sponsorship(p_id uuid, p_reference text) returns void language plpgsql as $$
-begin update sponsorships set payment_status = 'paid', payment_reference = p_reference, status = 'confirmed', reservation_expires_at = null, updated_at = now() where id = p_id and status = 'reserved_pending_payment'; if found then insert into audit_events(sponsorship_id, actor, action) values (p_id, 'stripe_webhook', 'payment_confirmed'); end if; end $$;
+begin update sponsorships set payment_status = 'paid', payment_reference = p_reference, status = 'confirmed', reservation_expires_at = null, updated_at = now() where id = p_id and status = 'reserved_pending_payment'; if found then insert into audit_events(sponsorship_id, actor, action) values (p_id, 'payment_webhook', 'payment_confirmed'); end if; end $$;
 
 insert into sponsorship_types (name, description, price_cents, display_order, recurring_enabled)
 select * from (values ('Sponsor a Day', 'Support Neileich programs for a full day.', 18000, 1, true), ('Sponsor Night Seder', 'Help make an evening of learning possible.', 7200, 2, true), ('Sponsor a Shabbos Program', 'Bring warmth and inspiration to Shabbos.', 36000, 3, true), ('Sponsor a Month', 'Sustain a month of belonging and growth.', 180000, 4, false)) as seed(name, description, price_cents, display_order, recurring_enabled)

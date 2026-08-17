@@ -1,0 +1,7 @@
+.ph-payment-fields { margin: 2rem 0; padding: 1.25rem; border: 1px solid #d7e1df; border-radius: 12px; background: #f7faf9; }
+.ph-payment-fields h3 { color: #163c46; font-size: 1.1rem; }
+.ph-payment-fields > p { margin: .2rem 0 1rem; color: #637078; font-size: .83rem; }
+.ph-payment-fields label { display: block; color: #29434a; font-size: .85rem; font-weight: 600; }
+.ph-payment-fields iframe { display: block; width: 100% !important; height: 44px !important; margin-top: .35rem; border: 1px solid #cedad8 !important; border-radius: 8px; background: #fff; }
+.ph-payment-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; }
+@media (max-width: 650px) { .ph-payment-grid { grid-template-columns: 1fr; } }

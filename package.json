@@ -11,14 +11,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@cardknox/react-ifields": "^2.2.86",
     "@hebcal/core": "^6.9.2",
     "@hebcal/hdate": "^0.22.8",
     "@neondatabase/serverless": "^1.1.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-router-dom": "^7.13.2",
-    "resend": "^6.19.0",
-    "stripe": "^22.5.0"
+    "resend": "^6.19.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",

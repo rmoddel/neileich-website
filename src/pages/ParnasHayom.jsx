@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { HDate } from "@hebcal/core";
+import IField from "@cardknox/react-ifields";
 import "./ParnasHayom.css";
 import "./ParnasHayomPreview.css";
+import "./ParnasHayomPayment.css";
 
 const fallbackTypes = [
   {
@@ -82,6 +84,10 @@ export default function ParnasHayom() {
   });
   const [checkoutError, setCheckoutError] = useState("");
   const [paying, setPaying] = useState(false);
+  const [cardExpiry, setCardExpiry] = useState("");
+  const cardField = useRef(null);
+  const cvvField = useRef(null);
+  const paymentTokens = useRef({});
   const paymentState = new URLSearchParams(window.location.search).get(
     "payment",
   );
@@ -151,12 +157,9 @@ export default function ParnasHayom() {
           : event.target.value,
     }));
   const printFlyer = () => window.print();
-  const checkout = async (event) => {
-    event.preventDefault();
+  const processPayment = async (cardToken, cvvToken) => {
     if (!selectedDate || !selectedType)
       return setCheckoutError("Please choose an available date.");
-    setPaying(true);
-    setCheckoutError("");
     const h = hebrew(selectedDate);
     try {
       const response = await fetch("/api/parnas-hayom/checkout", {
@@ -170,6 +173,9 @@ export default function ParnasHayom() {
           hebrewYear: h.getFullYear(),
           hebrewMonth: h.getMonth(),
           hebrewDay: h.getDate(),
+          cardToken,
+          cvvToken,
+          cardExpiry,
         }),
       });
       const rawPayload = await response.text();
@@ -185,10 +191,9 @@ export default function ParnasHayom() {
             "Checkout is temporarily unavailable. Please try again or contact Neileich.",
         );
       }
-      if (!payload.checkoutUrl) {
-        throw new Error("We could not create a secure checkout session. Please try again.");
-      }
-      window.location.assign(payload.checkoutUrl);
+      if (!payload.pending) throw new Error("We could not process your payment. Please try again.");
+      window.history.replaceState({}, "", "/parnas-hayom?payment=processing");
+      window.location.reload();
     } catch (error) {
       setCheckoutError(
         error.message || "We could not begin checkout. Please try again.",
@@ -196,9 +201,33 @@ export default function ParnasHayom() {
       setPaying(false);
     }
   };
+  const receiveToken = (token) => {
+    paymentTokens.current[token.xTokenType] = token.xToken;
+    if (paymentTokens.current.card && paymentTokens.current.cvv) {
+      const { card, cvv } = paymentTokens.current;
+      paymentTokens.current = {};
+      processPayment(card, cvv);
+    }
+  };
+  const checkout = (event) => {
+    event.preventDefault();
+    if (!selectedDate || !selectedType) return setCheckoutError("Please choose an available date.");
+    if (!/^\d{4}$/.test(cardExpiry)) return setCheckoutError("Enter your card expiration as MMYY.");
+    if (!cardField.current || !cvvField.current) return setCheckoutError("Secure card fields are still loading. Please try again.");
+    setPaying(true);
+    setCheckoutError("");
+    paymentTokens.current = {};
+    cardField.current.getToken();
+    cvvField.current.getToken();
+  };
   const h = selectedDate && hebrew(selectedDate);
   const canRecurring = selectedType?.recurring_enabled;
   const previewLeadIn = dedicationLeadIn(selectedType?.name);
+  const ifieldsAccount = {
+    xKey: import.meta.env.VITE_SOLA_IFIELDS_KEY,
+    xSoftwareName: "Neileich",
+    xSoftwareVersion: "1.0.0",
+  };
   return (
     <div className="ph-page">
       <section className="ph-hero">
@@ -439,6 +468,19 @@ export default function ParnasHayom() {
               </label>
             )}
           </div>
+          <section className="ph-payment-fields" aria-label="Secure payment details">
+            <h3>Secure payment</h3>
+            <p>Your card details are securely handled by Sola Payments.</p>
+            <label>Card number
+              <IField ref={cardField} type="card" account={ifieldsAccount} onToken={receiveToken} onError={(error) => setCheckoutError(error.errorMessage || "Please check your card number.")} options={{ autoFormat: true, placeholder: "Card number", iFieldstyle: { border: "0", fontSize: "16px", height: "42px", width: "100%" } }} />
+            </label>
+            <div className="ph-payment-grid">
+              <label>Expiration (MMYY)<input value={cardExpiry} onChange={(event) => setCardExpiry(event.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" autoComplete="cc-exp" placeholder="MMYY" required /></label>
+              <label>CVV
+                <IField ref={cvvField} type="cvv" account={ifieldsAccount} onToken={receiveToken} onError={(error) => setCheckoutError(error.errorMessage || "Please check your CVV.")} options={{ placeholder: "CVV", iFieldstyle: { border: "0", fontSize: "16px", height: "42px", width: "100%" } }} />
+              </label>
+            </div>
+          </section>
           <div className="ph-preview">
             <div className="ph-preview-brand">
               <img src="/logo-english.png" alt="Neileich" />
@@ -479,7 +521,7 @@ export default function ParnasHayom() {
               : `Continue to secure payment${selectedType ? ` · $${(selectedType.price_cents / 100).toLocaleString()}` : ""}`}
           </button>
           <p className="ph-secure">
-            Secure payment by Stripe. Your card information is never stored by
+            Secure payment by Sola Payments. Your card information is never stored by
             Neileich.
           </p>
         </form>
