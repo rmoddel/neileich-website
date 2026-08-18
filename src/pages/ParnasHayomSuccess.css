@@ -1,0 +1,6 @@
+.ph-success-page { min-height: 72vh; display: grid; place-items: center; padding: 3rem 1rem; background: #f5f7f7; }
+.ph-success-card { width: min(100%, 34rem); text-align: center; padding: 3rem 2rem; background: #fff; border: 1px solid #dbe5e2; border-radius: 18px; box-shadow: 0 16px 36px rgba(18,49,56,.1); }
+.ph-success-card img { width: 11rem; margin: 0 auto 1.8rem; }
+.ph-success-kicker { color: #a87825; font-size: .75rem; letter-spacing: .12em; font-weight: 800; }
+.ph-success-card h1 { margin: .5rem 0 1rem; color: #163c46; font-family: Georgia, serif; font-size: 2rem; }
+.ph-success-card > p:not(.ph-success-kicker) { color: #637078; margin-bottom: 1.75rem; }

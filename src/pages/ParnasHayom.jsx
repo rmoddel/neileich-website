@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { HDate } from "@hebcal/core";
 import "./ParnasHayom.css";
 import "./ParnasHayomPreview.css";
 import "./ParnasHayomPayment.css";
+import "./ParnasHayomSuccess.css";
 
 const fallbackTypes = [
   {
@@ -86,6 +87,9 @@ export default function ParnasHayom() {
   const [cardExpiry, setCardExpiry] = useState("");
   const tokenInputs = useRef(null);
   const [ifieldsReady, setIfieldsReady] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState("idle");
+  const [pendingSponsorshipId, setPendingSponsorshipId] = useState(null);
+  const previewRef = useRef(null);
   const paymentState = new URLSearchParams(window.location.search).get(
     "payment",
   );
@@ -106,6 +110,11 @@ export default function ParnasHayom() {
     const initialize = () => {
       if (window.setAccount && import.meta.env.VITE_SOLA_IFIELDS_KEY) {
         window.setAccount(import.meta.env.VITE_SOLA_IFIELDS_KEY, "Neileich", "1.0.0");
+        if (window.setIfieldStyle) {
+          const fieldStyle = { width: "100%", height: "42px", border: "0", outline: "none", "font-size": "16px", "font-family": "Inter, Arial, sans-serif" };
+          window.setIfieldStyle("card-number", fieldStyle);
+          window.setIfieldStyle("cvv", fieldStyle);
+        }
         setIfieldsReady(true);
       }
     };
@@ -178,6 +187,38 @@ export default function ParnasHayom() {
           : event.target.value,
     }));
   const printFlyer = () => window.print();
+  const downloadFlyer = useCallback(async () => {
+    if (!previewRef.current) return;
+    const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import("html2canvas"), import("jspdf")]);
+    const canvas = await html2canvas(previewRef.current, { backgroundColor: null, scale: 2, useCORS: true });
+    const pdf = new jsPDF({ orientation: "portrait", unit: "in", format: "letter" });
+    pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, 8.5, 11);
+    pdf.save(`neileich-dedication-${selectedDate ? dateKey(selectedDate) : "flyer"}.pdf`);
+  }, [selectedDate]);
+  useEffect(() => {
+    if (!pendingSponsorshipId || paymentStatus !== "processing") return;
+    let cancelled = false;
+    const checkStatus = async () => {
+      try {
+        const response = await fetch(`/api/parnas-hayom/status?sponsorshipId=${encodeURIComponent(pendingSponsorshipId)}`);
+        const result = await response.json();
+        if (cancelled) return;
+        if (result.status === "confirmed" && result.paymentStatus === "paid") {
+          await downloadFlyer();
+          if (!cancelled) setPaymentStatus("confirmed");
+          return;
+        }
+        if (["failed", "cancelled", "expired"].includes(result.status)) {
+          setPaymentStatus("failed");
+          setPaying(false);
+          return;
+        }
+        window.setTimeout(checkStatus, 2500);
+      } catch { window.setTimeout(checkStatus, 3000); }
+    };
+    checkStatus();
+    return () => { cancelled = true; };
+  }, [downloadFlyer, pendingSponsorshipId, paymentStatus]);
   const processPayment = async (cardToken, cvvToken) => {
     if (!selectedDate || !selectedType)
       return setCheckoutError("Please choose an available date.");
@@ -213,8 +254,9 @@ export default function ParnasHayom() {
         );
       }
       if (!payload.pending) throw new Error("We could not process your payment. Please try again.");
-      window.history.replaceState({}, "", "/parnas-hayom?payment=processing");
-      window.location.reload();
+      setPendingSponsorshipId(payload.sponsorshipId);
+      setPaymentStatus("processing");
+      window.history.replaceState({}, "", `/parnas-hayom?payment=processing&sponsorship=${payload.sponsorshipId}`);
     } catch (error) {
       setCheckoutError(
         error.message || "We could not begin checkout. Please try again.",
@@ -242,6 +284,9 @@ export default function ParnasHayom() {
   const h = selectedDate && hebrew(selectedDate);
   const canRecurring = selectedType?.recurring_enabled;
   const previewLeadIn = dedicationLeadIn(selectedType?.name);
+  if (paymentStatus === "confirmed") return (
+    <div className="ph-success-page"><div className="ph-success-card"><img src="/logo-english.png" alt="Neileich" /><p className="ph-success-kicker">SPONSORSHIP CONFIRMED</p><h1>Thank you for supporting Neileich.</h1><p>Your payment is confirmed and your dedication flyer has been downloaded.</p><button type="button" className="ph-pay" onClick={downloadFlyer}>Download flyer again</button></div></div>
+  );
   return (
     <div className="ph-page">
       <section className="ph-hero">
@@ -499,7 +544,7 @@ export default function ParnasHayom() {
               <input name="xCVV" data-ifields-id="cvv-token" type="hidden" />
             </div>
           </section>
-          <div className="ph-preview">
+          <div className="ph-preview" ref={previewRef}>
             <div className="ph-preview-brand">
               <img src="/logo-english.png" alt="Neileich" />
               <span>Building Belonging. Thriving children. Strong Kehila.</span>
