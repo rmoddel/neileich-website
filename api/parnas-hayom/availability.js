@@ -6,7 +6,7 @@ export default async function handler(req, res) {
   if (!sponsorshipTypeId || !/^\d{4}-\d{2}-\d{2}$/.test(start || '') || !/^\d{4}-\d{2}-\d{2}$/.test(end || '')) return badRequest(res, 'Invalid calendar request.')
   try {
     const rows = await db()`
-      select d::text as date, (
+      select d::date::text as date, (
         not exists (select 1 from blocked_dates b where b.date = d and (b.sponsorship_type_id is null or b.sponsorship_type_id = ${sponsorshipTypeId}::uuid))
         and (select count(*) from sponsorships s where s.sponsorship_type_id = ${sponsorshipTypeId}::uuid and s.gregorian_date = d and (s.status = 'confirmed' or (s.status = 'reserved_pending_payment' and s.reservation_expires_at > now())))
           < (select max_per_date from sponsorship_types where id = ${sponsorshipTypeId}::uuid and active = true)

@@ -145,7 +145,7 @@ export default function ParnasHayom() {
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then(({ days }) =>
         setAvailability(
-          Object.fromEntries(days.map((d) => [d.date, d.available])),
+          Object.fromEntries(days.map((d) => [d.date.slice(0, 10), d.available])),
         ),
       )
       .catch(() =>
@@ -156,7 +156,8 @@ export default function ParnasHayom() {
   }, [month, selectedType]);
   // Preview types are used only when the backend is unavailable locally. The server
   // still makes the authoritative availability decision before payment.
-  const usePreviewAvailability = selectedType?.id.startsWith("unconfigured");
+  const usePreviewAvailability =
+    selectedType?.id.startsWith("unconfigured") || Boolean(calendarError);
   const availableDays = calendarDays(month).filter(
     (day) =>
       day &&
