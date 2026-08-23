@@ -24,7 +24,7 @@ export default async function handler(req, res) {
     }
     await sql`update sponsorships set payment_provider = 'sola', payment_reference = ${result.xRefNum}, updated_at = now() where id = ${sponsorship.id}::uuid`
     // The webhook (not this browser response) confirms the sponsorship and sends email.
-    return res.status(200).json({ pending: true, sponsorshipId: sponsorship.id })
+    return res.status(200).json({ pending: true, sponsorshipId: sponsorship.id, receiptToken: sponsorship.receipt_token })
   } catch (caught) {
     console.error('Sola checkout failed', caught)
     return badRequest(res, caught.message?.includes('reserved') || caught.message?.includes('unavailable') ? caught.message : 'We could not process your payment. Please try again.', 409)

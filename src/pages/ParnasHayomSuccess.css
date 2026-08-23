@@ -1,6 +1,14 @@
 .ph-success-page { min-height: 72vh; display: grid; place-items: center; padding: 3rem 1rem; background: #f5f7f7; }
-.ph-success-card { width: min(100%, 34rem); text-align: center; padding: 3rem 2rem; background: #fff; border: 1px solid #dbe5e2; border-radius: 18px; box-shadow: 0 16px 36px rgba(18,49,56,.1); }
+.ph-success-card { width: min(100%, 42rem); text-align: center; padding: 3rem 2rem; background: #fff; border: 1px solid #dbe5e2; border-radius: 18px; box-shadow: 0 16px 36px rgba(18,49,56,.1); }
 .ph-success-card img { width: 11rem; margin: 0 auto 1.8rem; }
 .ph-success-kicker { color: #a87825; font-size: .75rem; letter-spacing: .12em; font-weight: 800; }
 .ph-success-card h1 { margin: .5rem 0 1rem; color: #163c46; font-family: Georgia, serif; font-size: 2rem; }
 .ph-success-card > p:not(.ph-success-kicker) { color: #637078; margin-bottom: 1.75rem; }
+.ph-receipt { margin: 1.75rem 0; padding: 1.4rem; text-align: left; background: #f7faf9; border: 1px solid #dbe5e2; border-radius: 12px; }
+.ph-receipt h2 { margin: 0 0 1rem; color: #163c46; font: 700 1.15rem Georgia, serif; }
+.ph-receipt dl { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: #dbe5e2; border: 1px solid #dbe5e2; }
+.ph-receipt dl > div { min-width: 0; padding: .8rem .9rem; background: #fff; }
+.ph-receipt dt { margin-bottom: .25rem; color: #68777a; font-size: .7rem; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
+.ph-receipt dd { margin: 0; overflow-wrap: anywhere; color: #173b45; font-size: .92rem; line-height: 1.45; }
+.ph-receipt dd span { font-size: 1.05rem; }
+@media (max-width: 520px) { .ph-success-card { padding: 2.25rem 1rem; } .ph-receipt { padding: 1rem; } .ph-receipt dl { grid-template-columns: 1fr; } }

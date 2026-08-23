@@ -83,13 +83,34 @@ export default function ParnasHayom() {
     recurring: false,
   });
   const [checkoutError, setCheckoutError] = useState("");
+  const [flyerDownloadError, setFlyerDownloadError] = useState(false);
   const [paying, setPaying] = useState(false);
   const [cardExpiry, setCardExpiry] = useState("");
   const tokenInputs = useRef(null);
   const [ifieldsReady, setIfieldsReady] = useState(false);
-  const [paymentStatus, setPaymentStatus] = useState("idle");
-  const [pendingSponsorshipId, setPendingSponsorshipId] = useState(null);
+  const initialPaymentParams = useMemo(
+    () => new URLSearchParams(window.location.search),
+    [],
+  );
+  const confirmationPreview =
+    import.meta.env.DEV &&
+    new URLSearchParams(window.location.search).get("preview-confirmation") === "1";
+  const [paymentStatus, setPaymentStatus] = useState(
+    confirmationPreview
+      ? "confirmed"
+      : initialPaymentParams.get("payment") === "processing"
+        ? "processing"
+        : "idle",
+  );
+  const [pendingSponsorshipId, setPendingSponsorshipId] = useState(
+    initialPaymentParams.get("sponsorship"),
+  );
+  const [receiptToken, setReceiptToken] = useState(
+    initialPaymentParams.get("receipt"),
+  );
+  const [receipt, setReceipt] = useState(null);
   const previewRef = useRef(null);
+  const flyerLibraries = useRef(null);
   const paymentState = new URLSearchParams(window.location.search).get(
     "payment",
   );
@@ -187,25 +208,37 @@ export default function ParnasHayom() {
           : event.target.value,
     }));
   const printFlyer = () => window.print();
+  const loadFlyerLibraries = useCallback(() => {
+    if (!flyerLibraries.current) {
+      flyerLibraries.current = Promise.all([import("html2canvas"), import("jspdf")]);
+    }
+    return flyerLibraries.current;
+  }, []);
   const downloadFlyer = useCallback(async () => {
     if (!previewRef.current) return;
-    const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import("html2canvas"), import("jspdf")]);
+    const [{ default: html2canvas }, { jsPDF }] = await loadFlyerLibraries();
     const canvas = await html2canvas(previewRef.current, { backgroundColor: null, scale: 2, useCORS: true });
     const pdf = new jsPDF({ orientation: "portrait", unit: "in", format: "letter" });
     pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, 8.5, 11);
     pdf.save(`neileich-dedication-${selectedDate ? dateKey(selectedDate) : "flyer"}.pdf`);
-  }, [selectedDate]);
+  }, [loadFlyerLibraries, selectedDate]);
   useEffect(() => {
-    if (!pendingSponsorshipId || paymentStatus !== "processing") return;
+    if (!pendingSponsorshipId || !receiptToken || paymentStatus !== "processing") return;
     let cancelled = false;
     const checkStatus = async () => {
       try {
-        const response = await fetch(`/api/parnas-hayom/status?sponsorshipId=${encodeURIComponent(pendingSponsorshipId)}`);
+        const response = await fetch(`/api/parnas-hayom/status?sponsorshipId=${encodeURIComponent(pendingSponsorshipId)}&receiptToken=${encodeURIComponent(receiptToken)}`);
         const result = await response.json();
         if (cancelled) return;
         if (result.status === "confirmed" && result.paymentStatus === "paid") {
-          await downloadFlyer();
-          if (!cancelled) setPaymentStatus("confirmed");
+          setReceipt(result.receipt);
+          try {
+            await downloadFlyer();
+          } catch {
+            if (!cancelled) setFlyerDownloadError(true);
+          } finally {
+            if (!cancelled) setPaymentStatus("confirmed");
+          }
           return;
         }
         if (["failed", "cancelled", "expired"].includes(result.status)) {
@@ -213,12 +246,12 @@ export default function ParnasHayom() {
           setPaying(false);
           return;
         }
-        window.setTimeout(checkStatus, 2500);
-      } catch { window.setTimeout(checkStatus, 3000); }
+        window.setTimeout(checkStatus, 1000);
+      } catch { window.setTimeout(checkStatus, 1500); }
     };
     checkStatus();
     return () => { cancelled = true; };
-  }, [downloadFlyer, pendingSponsorshipId, paymentStatus]);
+  }, [downloadFlyer, pendingSponsorshipId, paymentStatus, receiptToken]);
   const processPayment = async (cardToken, cvvToken) => {
     if (!selectedDate || !selectedType)
       return setCheckoutError("Please choose an available date.");
@@ -255,8 +288,9 @@ export default function ParnasHayom() {
       }
       if (!payload.pending) throw new Error("We could not process your payment. Please try again.");
       setPendingSponsorshipId(payload.sponsorshipId);
+      setReceiptToken(payload.receiptToken);
       setPaymentStatus("processing");
-      window.history.replaceState({}, "", `/parnas-hayom?payment=processing&sponsorship=${payload.sponsorshipId}`);
+      window.history.replaceState({}, "", `/parnas-hayom?payment=processing&sponsorship=${payload.sponsorshipId}&receipt=${payload.receiptToken}`);
     } catch (error) {
       setCheckoutError(
         error.message || "We could not begin checkout. Please try again.",
@@ -271,6 +305,7 @@ export default function ParnasHayom() {
     if (!ifieldsReady || !tokenInputs.current || !window.getTokens) return setCheckoutError("Secure card fields are still loading. Please try again.");
     setPaying(true);
     setCheckoutError("");
+    void loadFlyerLibraries();
     window.getTokens(() => {
       const cardToken = tokenInputs.current.querySelector('[data-ifields-id="card-number-token"]')?.value;
       const cvvToken = tokenInputs.current.querySelector('[data-ifields-id="cvv-token"]')?.value;
@@ -284,8 +319,34 @@ export default function ParnasHayom() {
   const h = selectedDate && hebrew(selectedDate);
   const canRecurring = selectedType?.recurring_enabled;
   const previewLeadIn = dedicationLeadIn(selectedType?.name);
+  const receiptHebrewDate = receipt?.gregorianDate
+    ? hebrew(new Date(`${receipt.gregorianDate}T12:00:00`)).renderGematriya(true)
+    : "";
   if (paymentStatus === "confirmed") return (
-    <div className="ph-success-page"><div className="ph-success-card"><img src="/logo-english.png" alt="Neileich" /><p className="ph-success-kicker">SPONSORSHIP CONFIRMED</p><h1>Thank you for supporting Neileich.</h1><p>Your payment is confirmed and your dedication flyer has been downloaded.</p><button type="button" className="ph-pay" onClick={downloadFlyer}>Download flyer again</button></div></div>
+    <div className="ph-success-page">
+      <div className="ph-success-card">
+        <img src="/logo-english.png" alt="Neileich" />
+        <p className="ph-success-kicker">SPONSORSHIP CONFIRMED</p>
+        <h1>Thank you for supporting Neileich.</h1>
+        <p>{confirmationPreview ? "This is a local preview of the confirmed-payment screen. No payment was made." : flyerDownloadError ? "Your payment is confirmed and a receipt is on its way by email. Your flyer could not download automatically; please use the Print flyer button before leaving this page next time." : "Your payment is confirmed. Your dedication flyer has been downloaded and a receipt is on its way by email."}</p>
+        {receipt && (
+          <section className="ph-receipt" aria-label="Sponsorship receipt">
+            <h2>Your sponsorship receipt</h2>
+            <dl>
+              <div><dt>Sponsorship</dt><dd>{receipt.sponsorshipName}</dd></div>
+              <div><dt>Amount paid</dt><dd>{new Intl.NumberFormat("en-US", { style: "currency", currency: receipt.currency?.toUpperCase() || "USD" }).format(receipt.amountCents / 100)}</dd></div>
+              <div><dt>Gregorian date</dt><dd>{prettyDate(new Date(`${receipt.gregorianDate}T12:00:00`))}</dd></div>
+              <div><dt>Hebrew date</dt><dd lang="he">{receiptHebrewDate}</dd></div>
+              <div><dt>Dedication</dt><dd>{receipt.dedicationType}<br /><span lang="he" dir="auto">{receipt.dedicationText}</span></dd></div>
+              <div><dt>Sponsored by</dt><dd>{receipt.donorName}<br />{receipt.donorEmail}{receipt.donorPhone ? <><br />{receipt.donorPhone}</> : null}</dd></div>
+              <div><dt>Public acknowledgment</dt><dd>{receipt.anonymous ? "Anonymous" : receipt.donorName}</dd></div>
+              <div><dt>Annual sponsorship</dt><dd>{receipt.recurring ? "Yes — annual Hebrew-date reminder" : "No"}</dd></div>
+              {receipt.paymentReference && <div><dt>Payment reference</dt><dd>{receipt.paymentReference}</dd></div>}
+            </dl>
+          </section>
+        )}
+      </div>
+    </div>
   );
   return (
     <div className="ph-page">
@@ -580,7 +641,9 @@ export default function ParnasHayom() {
           {checkoutError && <p className="ph-error">{checkoutError}</p>}
           <button className="ph-pay" disabled={paying}>
             {paying
-              ? "Opening secure checkout…"
+              ? paymentStatus === "processing"
+                ? "Confirming your payment…"
+                : "Securely authorizing your card…"
               : `Continue to secure payment${selectedType ? ` · $${(selectedType.price_cents / 100).toLocaleString()}` : ""}`}
           </button>
           <p className="ph-secure">
