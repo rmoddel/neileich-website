@@ -144,7 +144,7 @@ function Contact() {
               <p>
                 If you need support you can call or text HELP to our support line,
                 visit our website at <Link to="/">neileich.org</Link>, or email us at
-                neileichorg@gmail.com. Reply STOP to any text message you receive from Neileich to opt-out.
+                <a href="mailto:info@neileich.org">info@neileich.org</a>. Reply STOP to any text message you receive from Neileich to opt-out.
               </p>
               <p>
                 For more information, visit our <Link to="/privacy-policy">privacy policy</Link> or
@@ -196,7 +196,7 @@ function Contact() {
           <div className="contact-methods">
             <div className="contact-method">
               <strong>Email</strong>
-              <p>neileichorg@gmail.com</p>
+              <p><a href="mailto:info@neileich.org">info@neileich.org</a></p>
             </div>
             <div className="contact-method">
               <strong>Mailing Address</strong>

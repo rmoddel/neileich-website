@@ -14,7 +14,7 @@ function Footer() {
           </div>
           <p className="footer-tagline">Building belonging. Thriving children. Strong Kehila.</p>
           <p className="footer-legal-identity">
-            Neileich is a project of Bais Medrash of Lakewood Commons, a registered 501(c)(3) organization. EIN: 26-4527675. Contact: neileichorg@gmail.com
+            Neileich is a project of Bais Medrash of Lakewood Commons, a registered 501(c)(3) organization. EIN: 26-4527675. Contact: info@neileich.org
           </p>
         </div>
 
@@ -34,7 +34,7 @@ function Footer() {
           </div>
           <div className="footer-column">
             <h4>Contact</h4>
-            <p>neileichorg@gmail.com</p>
+            <p><a href="mailto:info@neileich.org">info@neileich.org</a></p>
             <p>Bais Medrash of Lakewood Commons</p>
             <p>44 Coles Way</p>
             <p>Lakewood, NJ 08701</p>

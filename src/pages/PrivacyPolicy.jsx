@@ -69,7 +69,7 @@ function PrivacyPolicy() {
               receive from us.
             </p>
             <p>
-              You may also contact us directly at neileichorg@gmail.com to request removal
+              You may also contact us directly at <a href="mailto:info@neileich.org">info@neileich.org</a> to request removal
               from our communication lists.
             </p>
           </section>
@@ -117,7 +117,7 @@ function PrivacyPolicy() {
               If you have questions about this Privacy Policy, please contact us:
             </p>
             <ul>
-              <li>Email: neileichorg@gmail.com</li>
+              <li>Email: <a href="mailto:info@neileich.org">info@neileich.org</a></li>
               <li>Address: 44 Coles Way, Lakewood, NJ 08701</li>
               <li>Website: <Link to="/contact">Contact Form</Link></li>
             </ul>

@@ -26,18 +26,76 @@
 
 .nav {
   display: flex;
+  align-items: center;
   gap: var(--spacing-xl);
 }
 
-.nav a {
+.nav a,
+.nav-menu-button {
   color: var(--color-text);
+  font: inherit;
   font-weight: 500;
   transition: color var(--transition);
 }
 
-.nav a:hover {
+.nav-menu-button {
+  background: none;
+  border: 0;
+  cursor: pointer;
+  padding: 0;
+}
+
+.nav a:hover,
+.nav-menu-button:hover,
+.nav-menu-button:focus-visible {
   color: var(--color-primary);
 }
+
+.nav-menu { position: relative; }
+
+.programs-menu,
+.donate-options {
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  box-shadow: 0 12px 30px rgb(15 41 66 / 18%);
+  position: absolute;
+  right: 0;
+  top: calc(100% + var(--spacing-md));
+  z-index: 101;
+}
+
+.programs-menu {
+  display: grid;
+  gap: var(--spacing-lg);
+  grid-template-columns: repeat(3, minmax(190px, 1fr));
+  padding: var(--spacing-xl);
+  width: min(760px, calc(100vw - 2rem));
+}
+
+.program-group h2 { font-size: var(--font-size-base); margin-bottom: var(--spacing-sm); }
+.program-group ul { display: grid; gap: var(--spacing-xs); list-style: none; }
+.program-group li { color: var(--color-text-light); font-size: var(--font-size-sm); line-height: 1.35; }
+
+.donate-button {
+  background: var(--color-accent-gold);
+  border: 0;
+  border-radius: var(--border-radius);
+  color: var(--color-primary-dark);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  padding: var(--spacing-sm) var(--spacing-md);
+}
+
+.donate-button:hover,
+.donate-button:focus-visible { background: #e6b85c; }
+.donate-options { display: grid; gap: var(--spacing-xs); min-width: 210px; padding: var(--spacing-sm); }
+.donate-options a { border-radius: 5px; padding: var(--spacing-sm) var(--spacing-md); white-space: nowrap; }
+.donate-options a:hover,
+.donate-options a:focus-visible { background: var(--color-surface); }
+
+@media (max-width: 1000px) { .nav { gap: var(--spacing-md); } }
 
 @media (max-width: 768px) {
   .header-content {
@@ -50,6 +108,20 @@
   }
 
   .nav {
-    gap: var(--spacing-lg);
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
+    justify-content: center;
   }
+
+  .programs-menu {
+    grid-template-columns: 1fr;
+    max-height: min(65vh, 620px);
+    overflow-y: auto;
+    right: var(--spacing-md);
+    left: var(--spacing-md);
+    transform: none;
+    width: auto;
+  }
+
+  .programs-nav { position: static; }
 }
