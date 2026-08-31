@@ -23,7 +23,7 @@ function Footer() {
             <h4>Navigation</h4>
             <Link to="/">Home</Link>
             <Link to="/about">Our Mission</Link>
-            <a href="/#programs">Programs</a>
+            <Link to="/programs">Programs</Link>
             <Link to="/contact">Contact</Link>
             <Link to="/parnas-hayom">Parnas Hayom</Link>
           </div>

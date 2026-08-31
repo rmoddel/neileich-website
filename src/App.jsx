@@ -7,6 +7,7 @@ import Contact from './pages/Contact'
 import PrivacyPolicy from './pages/PrivacyPolicy'
 import Terms from './pages/Terms'
 import ParnasHayom from './pages/ParnasHayom'
+import ProgramsPage from './pages/ProgramsPage'
 import './App.css'
 
 function App() {
@@ -21,6 +22,7 @@ function App() {
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/parnas-hayom" element={<ParnasHayom />} />
+          <Route path="/programs" element={<ProgramsPage />} />
         </Routes>
       </main>
       <Footer />
