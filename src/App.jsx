@@ -8,6 +8,7 @@ import PrivacyPolicy from './pages/PrivacyPolicy'
 import Terms from './pages/Terms'
 import ParnasHayom from './pages/ParnasHayom'
 import ProgramsPage from './pages/ProgramsPage'
+import Donate from './pages/Donate'
 import './App.css'
 
 function App() {
@@ -23,6 +24,7 @@ function App() {
           <Route path="/terms" element={<Terms />} />
           <Route path="/parnas-hayom" element={<ParnasHayom />} />
           <Route path="/programs" element={<ProgramsPage />} />
+          <Route path="/donate" element={<Donate />} />
         </Routes>
       </main>
       <Footer />

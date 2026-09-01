@@ -26,6 +26,7 @@ function Footer() {
             <Link to="/programs">Programs</Link>
             <Link to="/contact">Contact</Link>
             <Link to="/parnas-hayom">Parnas Hayom</Link>
+            <Link to="/donate">Donate</Link>
           </div>
           <div className="footer-column">
             <h4>Legal</h4>
