@@ -9,10 +9,15 @@ export default async function handler(req, res) {
   if (!process.env.SOLA_API_KEY) return badRequest(res, 'Payments are temporarily unavailable.', 503)
   const data = req.body
   if (!data.cardToken || !data.cvvToken || !/^\d{4}$/.test(data.cardExpiry || '')) return badRequest(res, 'Please complete your card details.')
+  const adjustedAmountText = String(data.adjustedAmount || '').trim()
+  const adjustedAmountCents = adjustedAmountText ? Math.round(Number(adjustedAmountText) * 100) : null
+  if (adjustedAmountText && (!/^\d{1,7}(\.\d{1,2})?$/.test(adjustedAmountText) || adjustedAmountCents < 100 || adjustedAmountCents > 100000000)) return badRequest(res, 'Enter a valid adjusted amount.')
+  if (adjustedAmountCents !== null && (!process.env.PARNAS_OVERRIDE_CODE || data.overrideCode !== process.env.PARNAS_OVERRIDE_CODE)) return badRequest(res, 'The override code is not valid.', 403)
   try {
     const sql = db()
-    const hold = await sql`select * from create_pending_sponsorship(${data.sponsorshipTypeId}::uuid, ${data.donorName.trim()}, ${data.donorEmail.trim()}, ${data.donorPhone?.trim() || ''}, ${data.dedicationType}, ${data.dedicationText.trim()}, ${Boolean(data.anonymous)}, ${data.date}::date, ${Number(data.hebrewYear)}, ${Number(data.hebrewMonth)}, ${Number(data.hebrewDay)}, ${Boolean(data.recurring)})`
+    const hold = await sql`select * from create_pending_sponsorship(${data.sponsorshipTypeId}::uuid, ${data.donorName.trim()}, ${data.donorEmail.trim()}, ${data.donorPhone?.trim() || ''}, ${data.dedicationType}, ${data.dedicationText.trim()}, ${Boolean(data.anonymous)}, ${data.date}::date, ${Number(data.hebrewYear)}, ${Number(data.hebrewMonth)}, ${Number(data.hebrewDay)}, ${Boolean(data.recurring)}, ${adjustedAmountCents})`
     const sponsorship = hold[0]
+    if (adjustedAmountCents !== null) await sql`insert into audit_events (sponsorship_id, actor, action, metadata) values (${sponsorship.id}::uuid, 'amount_override', 'adjusted_amount_applied', ${JSON.stringify({ amountCents: adjustedAmountCents })}::jsonb)`
     const gatewayResponse = await fetch(GATEWAY_URL, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ xKey: process.env.SOLA_API_KEY, xVersion: '5.0.0', xCommand: 'cc:sale', xAmount: (sponsorship.amount_cents / 100).toFixed(2), xCardNum: data.cardToken, xCVV: data.cvvToken, xExp: data.cardExpiry, xBillFirstName: data.donorName.trim().split(/\s+/)[0], xBillLastName: data.donorName.trim().split(/\s+/).slice(1).join(' ') || '-', xEmail: data.donorEmail.trim(), xSoftwareName: 'Neileich', xSoftwareVersion: '1.0.0', xCustom01: sponsorship.id })

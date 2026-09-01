@@ -46,7 +46,8 @@ create table if not exists audit_events (id uuid primary key default gen_random_
 
 -- Takes a row lock on the sponsorship type. That serializes checkout holds for this type and safely enforces capacity.
 drop function if exists create_pending_sponsorship(uuid, text, text, text, text, text, boolean, date, integer, integer, integer, boolean);
-create function create_pending_sponsorship(p_type uuid, p_name text, p_email text, p_phone text, p_dedication_type text, p_dedication_text text, p_anonymous boolean, p_date date, p_hebrew_year integer, p_hebrew_month integer, p_hebrew_day integer, p_recurring boolean)
+drop function if exists create_pending_sponsorship(uuid, text, text, text, text, text, boolean, date, integer, integer, integer, boolean, integer);
+create function create_pending_sponsorship(p_type uuid, p_name text, p_email text, p_phone text, p_dedication_type text, p_dedication_text text, p_anonymous boolean, p_date date, p_hebrew_year integer, p_hebrew_month integer, p_hebrew_day integer, p_recurring boolean, p_override_amount_cents integer default null)
 returns table (id uuid, amount_cents integer, receipt_token uuid) language plpgsql as $$
 declare v_type sponsorship_types%rowtype; v_count integer; v_id uuid; v_receipt_token uuid;
 begin
@@ -56,9 +57,9 @@ begin
   select count(*) into v_count from sponsorships where sponsorship_type_id = p_type and gregorian_date = p_date and (status = 'confirmed' or (status = 'reserved_pending_payment' and reservation_expires_at > now()));
   if v_count >= v_type.max_per_date then raise exception 'This date was just reserved by another donor'; end if;
   insert into sponsorships (sponsorship_type_id, donor_name, donor_email, donor_phone, dedication_type, dedication_text, anonymous, gregorian_date, hebrew_year, hebrew_month, hebrew_day, amount_cents, recurring, reservation_expires_at)
-  values (p_type, p_name, lower(p_email), nullif(p_phone,''), p_dedication_type, p_dedication_text, p_anonymous, p_date, p_hebrew_year, p_hebrew_month, p_hebrew_day, v_type.price_cents, p_recurring, now() + interval '20 minutes') returning sponsorships.id, sponsorships.receipt_token into v_id, v_receipt_token;
+  values (p_type, p_name, lower(p_email), nullif(p_phone,''), p_dedication_type, p_dedication_text, p_anonymous, p_date, p_hebrew_year, p_hebrew_month, p_hebrew_day, coalesce(p_override_amount_cents, v_type.price_cents), p_recurring, now() + interval '20 minutes') returning sponsorships.id, sponsorships.receipt_token into v_id, v_receipt_token;
   insert into audit_events(sponsorship_id, actor, action) values (v_id, 'donor', 'checkout_hold_created');
-  return query select v_id, v_type.price_cents, v_receipt_token;
+  return query select v_id, coalesce(p_override_amount_cents, v_type.price_cents), v_receipt_token;
 end $$;
 create or replace function confirm_paid_sponsorship(p_id uuid, p_reference text) returns void language plpgsql as $$
 begin update sponsorships set payment_status = 'paid', payment_reference = p_reference, status = 'confirmed', reservation_expires_at = null, updated_at = now() where id = p_id and status = 'reserved_pending_payment'; if found then insert into audit_events(sponsorship_id, actor, action) values (p_id, 'payment_webhook', 'payment_confirmed'); end if; end $$;
