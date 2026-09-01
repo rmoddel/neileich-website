@@ -3,7 +3,7 @@
 .programs-page-hero::after { background: url('/programs/learning-circle.jpg') center/cover; content: ''; inset: 0; opacity: .14; position: absolute; }
 .programs-page-hero .container { max-width: 860px; position: relative; z-index: 1; }
 .programs-page-hero p, .program-section-heading > div > p { color: var(--color-accent-gold); font-size: .77rem; font-weight: 800; letter-spacing: .16em; margin-bottom: .75rem; text-transform: uppercase; }
-.programs-page-hero h1 { font-size: clamp(2.75rem, 6.2vw, 5.1rem); line-height: .98; margin: 0 0 1rem; max-width: 720px; }
+.programs-page-hero h1 { font-size: clamp(2.75rem, 6.2vw, 5.1rem); line-height: .98; margin: 0 0 1rem; max-width: 720px;     color: #d7e4e9;}
 .programs-page-hero span { color: #d7e4e9; font-size: clamp(1rem, 2vw, 1.3rem); }
 .program-section { padding: clamp(3.5rem, 7vw, 6.5rem) 0; }
 .program-section-tint { background: #f0f6f5; }

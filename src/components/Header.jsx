@@ -24,9 +24,8 @@ function Header() {
             </button>
             {openMenu === 'donate' && (
               <div id="donate-menu" className="donate-options" role="region" aria-label="Donation options">
-                <Link to="/donate" onClick={() => setOpenMenu(null)}>Give any amount</Link>
-                <a href="https://secure.cardknox.com/neileich" target="_blank" rel="noreferrer">Donate with CardKnox</a>
-                <a href="https://thedonorsfund.org/donate/NEILECH-p7711855057422424/264527675" target="_blank" rel="noreferrer">Donate with Donors Fund</a>
+                <a href="https://secure.cardknox.com/neileich" target="_blank" rel="noreferrer">Donate Credit Card or ACH</a>
+                <Link to="/donate#donor-advised-fund" onClick={() => setOpenMenu(null)}>By Donor Advised Fund</Link>
               </div>
             )}
           </div>

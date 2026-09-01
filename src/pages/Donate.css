@@ -18,6 +18,10 @@
 .donate-button { background: #b48328; border: 0; border-radius: 9px; color: #fff; cursor: pointer; font: inherit; font-weight: 800; padding: .95rem 1rem; width: 100%; }
 .donate-button:disabled { cursor: wait; opacity: .72; }
 .donate-card > small { color: #67777b; display: block; margin-top: 1rem; text-align: center; }
+.donor-advised-fund { background: #f6faf9; border: 1px solid #d7e2df; border-radius: 18px; margin: 1.25rem auto 0; max-width: 620px; padding: clamp(1.4rem, 4vw, 2rem); scroll-margin-top: 2rem; }
+.donor-advised-fund h2 { color: #163c46; font-family: Georgia, serif; font-size: 1.5rem; margin: 0 0 .45rem; }
+.donor-advised-fund p { color: #637078; line-height: 1.55; margin: 0; }
+.donor-advised-fund strong { color: #163c46; }
 .donate-success { text-align: center; }
 .donate-success > img { margin: 0 auto 1.5rem; max-width: 180px; }
 .donate-success > p { color: #a87825; font-size: .75rem; font-weight: 800; letter-spacing: .13em; }
