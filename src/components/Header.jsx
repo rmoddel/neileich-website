@@ -25,7 +25,10 @@ function Header() {
             {openMenu === 'donate' && (
               <div id="donate-menu" className="donate-options" role="region" aria-label="Donation options">
                 <a href="https://secure.cardknox.com/neileich" target="_blank" rel="noreferrer">Donate Credit Card or ACH</a>
-                <a href="https://thedonorsfund.org/donate/NEILECH-p7711855057422424/264527675" target="_blank" rel="noreferrer">Donate with Donors Fund</a>
+                <div className="donor-fund-option">
+                  <a href="https://thedonorsfund.org/donate/NEILECH-p7711855057422424/264527675" target="_blank" rel="noreferrer">Donate with Donors Fund</a>
+                  <p>To donate from the donor fund portal, search Tax ID <strong>26-4527675</strong> and choose <strong>Neileich</strong>.</p>
+                </div>
               </div>
             )}
           </div>

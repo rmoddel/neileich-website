@@ -83,7 +83,6 @@ export default function ParnasHayom() {
     recurring: false,
   });
   const [checkoutError, setCheckoutError] = useState("");
-  const [showAmountOverride, setShowAmountOverride] = useState(false);
   const [overrideAmount, setOverrideAmount] = useState("");
   const [overrideCode, setOverrideCode] = useState("");
   const [flyerDownloadError, setFlyerDownloadError] = useState(false);
@@ -129,20 +128,6 @@ export default function ParnasHayom() {
         setTypes(fallbackTypes);
         setSelectedType(fallbackTypes[0]);
       });
-  }, []);
-  useEffect(() => {
-    const sequence = "neileich";
-    let typed = "";
-    const listen = (event) => {
-      if (["INPUT", "TEXTAREA", "SELECT"].includes(event.target.tagName)) return;
-      typed = `${typed}${event.key.toLowerCase()}`.slice(-sequence.length);
-      if (typed === sequence) {
-        setShowAmountOverride(true);
-        typed = "";
-      }
-    };
-    window.addEventListener("keydown", listen);
-    return () => window.removeEventListener("keydown", listen);
   }, []);
   useEffect(() => {
     const initialize = () => {
@@ -281,8 +266,8 @@ export default function ParnasHayom() {
           ...form,
           sponsorshipTypeId: selectedType.id,
           sponsorshipName: selectedType.name,
-          adjustedAmount: showAmountOverride && overrideAmount ? overrideAmount : undefined,
-          overrideCode: showAmountOverride && overrideAmount ? overrideCode : undefined,
+          adjustedAmount: overrideCode.trim() && overrideAmount ? overrideAmount : undefined,
+          overrideCode: overrideCode.trim() && overrideAmount ? overrideCode : undefined,
           date: dateKey(selectedDate),
           hebrewYear: h.getFullYear(),
           hebrewMonth: h.getMonth(),
@@ -423,15 +408,15 @@ export default function ParnasHayom() {
               </button>
             ))}
           </div>
-          {showAmountOverride && selectedType && (
-            <div className="ph-amount-override">
-              <strong>Admin adjustment</strong>
-              <p>Set the approved sponsorship amount. This does not appear on the dedication flyer.</p>
-              <div>
+          {selectedType && (
+            <section className="ph-amount-override" aria-labelledby="parnas-amount-override-heading">
+              <strong id="parnas-amount-override-heading">Staff adjustment</strong>
+              <label>Authorization code<input type="password" value={overrideCode} onChange={(event) => setOverrideCode(event.target.value)} autoComplete="off" /></label>
+              {overrideCode.trim() && <div className="ph-adjustment-amount">
+                <p>Set the approved sponsorship amount. This does not appear on the dedication flyer.</p>
                 <label>Adjusted amount<input type="number" min="1" step="0.01" inputMode="decimal" value={overrideAmount} onChange={(event) => setOverrideAmount(event.target.value)} placeholder={(selectedType.price_cents / 100).toFixed(2)} /></label>
-                <label>Override code<input type="password" value={overrideCode} onChange={(event) => setOverrideCode(event.target.value)} autoComplete="off" /></label>
-              </div>
-            </div>
+              </div>}
+            </section>
           )}
         </section>
         <section className="ph-card">
@@ -673,7 +658,7 @@ export default function ParnasHayom() {
               ? paymentStatus === "processing"
                 ? "Confirming your payment…"
                 : "Securely authorizing your card…"
-              : `Continue to secure payment${selectedType ? ` · $${(showAmountOverride && overrideAmount ? Number(overrideAmount) : selectedType.price_cents / 100).toLocaleString()}` : ""}`}
+              : `Continue to secure payment${selectedType ? ` · $${(overrideCode.trim() && overrideAmount ? Number(overrideAmount) : selectedType.price_cents / 100).toLocaleString()}` : ""}`}
           </button>
           <p className="ph-secure">
             Secure payment by Sola Payments. Your card information is never stored by
