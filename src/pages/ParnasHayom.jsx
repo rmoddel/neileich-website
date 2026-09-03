@@ -4,6 +4,7 @@ import "./ParnasHayom.css";
 import "./ParnasHayomPreview.css";
 import "./ParnasHayomPayment.css";
 import "./ParnasHayomSuccess.css";
+import "./ParnasHayomOverride.css";
 
 const fallbackTypes = [
   {
@@ -85,6 +86,9 @@ export default function ParnasHayom() {
   const [checkoutError, setCheckoutError] = useState("");
   const [overrideAmount, setOverrideAmount] = useState("");
   const [overrideCode, setOverrideCode] = useState("");
+  const [overrideApproved, setOverrideApproved] = useState(false);
+  const [overrideVerifying, setOverrideVerifying] = useState(false);
+  const [overrideError, setOverrideError] = useState("");
   const [flyerDownloadError, setFlyerDownloadError] = useState(false);
   const [paying, setPaying] = useState(false);
   const [cardExpiry, setCardExpiry] = useState("");
@@ -209,6 +213,26 @@ export default function ParnasHayom() {
           ? event.target.checked
           : event.target.value,
     }));
+  const verifyOverrideCode = async () => {
+    if (!overrideCode.trim()) return;
+    setOverrideVerifying(true);
+    setOverrideError("");
+    try {
+      const response = await fetch("/api/parnas-hayom/verify-override", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ overrideCode }),
+      });
+      if (!response.ok) throw new Error("The authorization code is not valid.");
+      setOverrideApproved(true);
+    } catch (error) {
+      setOverrideApproved(false);
+      setOverrideAmount("");
+      setOverrideError(error.message);
+    } finally {
+      setOverrideVerifying(false);
+    }
+  };
   const printFlyer = () => window.print();
   const loadFlyerLibraries = useCallback(() => {
     if (!flyerLibraries.current) {
@@ -266,8 +290,8 @@ export default function ParnasHayom() {
           ...form,
           sponsorshipTypeId: selectedType.id,
           sponsorshipName: selectedType.name,
-          adjustedAmount: overrideCode.trim() && overrideAmount ? overrideAmount : undefined,
-          overrideCode: overrideCode.trim() && overrideAmount ? overrideCode : undefined,
+          adjustedAmount: overrideApproved && overrideAmount ? overrideAmount : undefined,
+          overrideCode: overrideApproved && overrideAmount ? overrideCode : undefined,
           date: dateKey(selectedDate),
           hebrewYear: h.getFullYear(),
           hebrewMonth: h.getMonth(),
@@ -411,9 +435,12 @@ export default function ParnasHayom() {
           {selectedType && (
             <section className="ph-amount-override" aria-labelledby="parnas-amount-override-heading">
               <strong id="parnas-amount-override-heading">Staff adjustment</strong>
-              <label>Authorization code<input type="password" value={overrideCode} onChange={(event) => setOverrideCode(event.target.value)} autoComplete="off" /></label>
-              {overrideCode.trim() && <div className="ph-adjustment-amount">
-                <p>Set the approved sponsorship amount. This does not appear on the dedication flyer.</p>
+              <div className="ph-override-code">
+                <label>Code<input type="password" value={overrideCode} onChange={(event) => { setOverrideCode(event.target.value); setOverrideApproved(false); setOverrideAmount(""); setOverrideError(""); }} autoComplete="off" /></label>
+                <button type="button" onClick={verifyOverrideCode} disabled={!overrideCode.trim() || overrideVerifying}>{overrideVerifying ? "Checking…" : "Unlock"}</button>
+              </div>
+              {overrideError && <p className="ph-override-error">{overrideError}</p>}
+              {overrideApproved && <div className="ph-adjustment-amount">
                 <label>Adjusted amount<input type="number" min="1" step="0.01" inputMode="decimal" value={overrideAmount} onChange={(event) => setOverrideAmount(event.target.value)} placeholder={(selectedType.price_cents / 100).toFixed(2)} /></label>
               </div>}
             </section>
@@ -658,7 +685,7 @@ export default function ParnasHayom() {
               ? paymentStatus === "processing"
                 ? "Confirming your payment…"
                 : "Securely authorizing your card…"
-              : `Continue to secure payment${selectedType ? ` · $${(overrideCode.trim() && overrideAmount ? Number(overrideAmount) : selectedType.price_cents / 100).toLocaleString()}` : ""}`}
+              : `Continue to secure payment${selectedType ? ` · $${(overrideApproved && overrideAmount ? Number(overrideAmount) : selectedType.price_cents / 100).toLocaleString()}` : ""}`}
           </button>
           <p className="ph-secure">
             Secure payment by Sola Payments. Your card information is never stored by

@@ -1,0 +1,34 @@
+.ph-card .ph-amount-override {
+  background: transparent;
+  border: 0;
+  border-top: 1px solid #edf1f0;
+  border-radius: 0;
+  margin-top: 1.25rem;
+  max-width: 260px;
+  padding: .55rem 0 0;
+}
+
+.ph-card .ph-amount-override strong {
+  color: #8a9696;
+  display: block;
+  font-size: .68rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.ph-card .ph-override-code {
+  align-items: end;
+  display: grid;
+  gap: .4rem;
+  grid-template-columns: 1fr auto;
+  margin-top: .2rem;
+}
+
+.ph-card .ph-amount-override label { color: #8a9696; font-size: .7rem; font-weight: 600; }
+.ph-card .ph-amount-override input { background: #fafcfc; border: 1px solid #e0e7e5; border-radius: 5px; box-sizing: border-box; font: inherit; margin-top: .2rem; padding: .35rem .45rem; width: 100%; }
+.ph-card .ph-override-code button { background: none; border: 1px solid #d9e2e0; border-radius: 5px; color: #718080; cursor: pointer; font-size: .72rem; padding: .38rem .5rem; }
+.ph-card .ph-override-code button:disabled { cursor: default; opacity: .55; }
+.ph-card .ph-adjustment-amount { margin-top: .6rem; }
+.ph-card .ph-adjustment-amount label { color: #4b463c; font-size: .8rem; }
+.ph-card .ph-override-error { color: #a62f26 !important; font-size: .72rem !important; margin: .35rem 0 0 !important; }
