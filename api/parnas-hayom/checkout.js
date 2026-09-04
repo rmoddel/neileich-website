@@ -15,7 +15,12 @@ export default async function handler(req, res) {
   if (adjustedAmountCents !== null && (!process.env.PARNAS_OVERRIDE_CODE || data.overrideCode !== process.env.PARNAS_OVERRIDE_CODE)) return badRequest(res, 'The override code is not valid.', 403)
   try {
     const sql = db()
-    const hold = await sql`select * from create_pending_sponsorship(${data.sponsorshipTypeId}::uuid, ${data.donorName.trim()}, ${data.donorEmail.trim()}, ${data.donorPhone?.trim() || ''}, ${data.dedicationType}, ${data.dedicationText.trim()}, ${Boolean(data.anonymous)}, ${data.date}::date, ${Number(data.hebrewYear)}, ${Number(data.hebrewMonth)}, ${Number(data.hebrewDay)}, ${Boolean(data.recurring)}, ${adjustedAmountCents})`
+    // The original production function accepted 12 arguments. Call that compatible
+    // signature when there is no override, so standard payments remain live while
+    // the override migration is being rolled out.
+    const hold = adjustedAmountCents === null
+      ? await sql`select * from create_pending_sponsorship(${data.sponsorshipTypeId}::uuid, ${data.donorName.trim()}, ${data.donorEmail.trim()}, ${data.donorPhone?.trim() || ''}, ${data.dedicationType}, ${data.dedicationText.trim()}, ${Boolean(data.anonymous)}, ${data.date}::date, ${Number(data.hebrewYear)}, ${Number(data.hebrewMonth)}, ${Number(data.hebrewDay)}, ${Boolean(data.recurring)})`
+      : await sql`select * from create_pending_sponsorship(${data.sponsorshipTypeId}::uuid, ${data.donorName.trim()}, ${data.donorEmail.trim()}, ${data.donorPhone?.trim() || ''}, ${data.dedicationType}, ${data.dedicationText.trim()}, ${Boolean(data.anonymous)}, ${data.date}::date, ${Number(data.hebrewYear)}, ${Number(data.hebrewMonth)}, ${Number(data.hebrewDay)}, ${Boolean(data.recurring)}, ${adjustedAmountCents})`
     const sponsorship = hold[0]
     if (adjustedAmountCents !== null) await sql`insert into audit_events (sponsorship_id, actor, action, metadata) values (${sponsorship.id}::uuid, 'amount_override', 'adjusted_amount_applied', ${JSON.stringify({ amountCents: adjustedAmountCents })}::jsonb)`
     const gatewayResponse = await fetch(GATEWAY_URL, {
