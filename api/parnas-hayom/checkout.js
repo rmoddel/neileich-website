@@ -15,14 +15,17 @@ export default async function handler(req, res) {
   if (adjustedAmountCents !== null && (!process.env.PARNAS_OVERRIDE_CODE || data.overrideCode !== process.env.PARNAS_OVERRIDE_CODE)) return badRequest(res, 'The override code is not valid.', 403)
   try {
     const sql = db()
-    // The original production function accepted 12 arguments. Call that compatible
-    // signature when there is no override, so standard payments remain live while
-    // the override migration is being rolled out.
-    const hold = adjustedAmountCents === null
-      ? await sql`select * from create_pending_sponsorship(${data.sponsorshipTypeId}::uuid, ${data.donorName.trim()}, ${data.donorEmail.trim()}, ${data.donorPhone?.trim() || ''}, ${data.dedicationType}, ${data.dedicationText.trim()}, ${Boolean(data.anonymous)}, ${data.date}::date, ${Number(data.hebrewYear)}, ${Number(data.hebrewMonth)}, ${Number(data.hebrewDay)}, ${Boolean(data.recurring)})`
-      : await sql`select * from create_pending_sponsorship(${data.sponsorshipTypeId}::uuid, ${data.donorName.trim()}, ${data.donorEmail.trim()}, ${data.donorPhone?.trim() || ''}, ${data.dedicationType}, ${data.dedicationText.trim()}, ${Boolean(data.anonymous)}, ${data.date}::date, ${Number(data.hebrewYear)}, ${Number(data.hebrewMonth)}, ${Number(data.hebrewDay)}, ${Boolean(data.recurring)}, ${adjustedAmountCents})`
-    const sponsorship = hold[0]
-    if (adjustedAmountCents !== null) await sql`insert into audit_events (sponsorship_id, actor, action, metadata) values (${sponsorship.id}::uuid, 'amount_override', 'adjusted_amount_applied', ${JSON.stringify({ amountCents: adjustedAmountCents })}::jsonb)`
+    // Keep the reservation call compatible with the original production schema.
+    // An approved override changes only the freshly created reservation, before it
+    // is sent to Sola, so it works without requiring a function-signature migration.
+    const hold = await sql`select * from create_pending_sponsorship(${data.sponsorshipTypeId}::uuid, ${data.donorName.trim()}, ${data.donorEmail.trim()}, ${data.donorPhone?.trim() || ''}, ${data.dedicationType}, ${data.dedicationText.trim()}, ${Boolean(data.anonymous)}, ${data.date}::date, ${Number(data.hebrewYear)}, ${Number(data.hebrewMonth)}, ${Number(data.hebrewDay)}, ${Boolean(data.recurring)})`
+    let sponsorship = hold[0]
+    if (adjustedAmountCents !== null) {
+      const updated = await sql`update sponsorships set amount_cents = ${adjustedAmountCents}, updated_at = now() where id = ${sponsorship.id}::uuid and status = 'reserved_pending_payment' returning id, amount_cents, receipt_token`
+      sponsorship = updated[0]
+      if (!sponsorship) throw new Error('This sponsorship reservation is no longer available.')
+      await sql`insert into audit_events (sponsorship_id, actor, action, metadata) values (${sponsorship.id}::uuid, 'amount_override', 'adjusted_amount_applied', ${JSON.stringify({ amountCents: adjustedAmountCents })}::jsonb)`
+    }
     const gatewayResponse = await fetch(GATEWAY_URL, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ xKey: process.env.SOLA_API_KEY, xVersion: '5.0.0', xCommand: 'cc:sale', xAmount: (sponsorship.amount_cents / 100).toFixed(2), xCardNum: data.cardToken, xCVV: data.cvvToken, xExp: data.cardExpiry, xBillFirstName: data.donorName.trim().split(/\s+/)[0], xBillLastName: data.donorName.trim().split(/\s+/).slice(1).join(' ') || '-', xEmail: data.donorEmail.trim(), xSoftwareName: 'Neileich', xSoftwareVersion: '1.0.0', xCustom01: sponsorship.id })
