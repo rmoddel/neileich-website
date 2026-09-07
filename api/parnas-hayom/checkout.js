@@ -1,4 +1,4 @@
-import { db, badRequest, validCheckout } from '../_lib/parnas.js'
+import { db, badRequest, finalizeSponsorshipPayment, validCheckout } from '../_lib/parnas.js'
 
 const GATEWAY_URL = 'https://x1.cardknox.com/gatewayjson'
 
@@ -36,7 +36,7 @@ export default async function handler(req, res) {
       return badRequest(res, result.xError || 'Your payment was not approved. Please check your card and try again.', 402)
     }
     await sql`update sponsorships set payment_provider = 'sola', payment_reference = ${result.xRefNum}, updated_at = now() where id = ${sponsorship.id}::uuid`
-    // The webhook (not this browser response) confirms the sponsorship and sends email.
+    await finalizeSponsorshipPayment({ sponsorshipId: sponsorship.id, reference: result.xRefNum })
     return res.status(200).json({ pending: true, sponsorshipId: sponsorship.id, receiptToken: sponsorship.receipt_token })
   } catch (caught) {
     console.error('Sola checkout failed', caught)
