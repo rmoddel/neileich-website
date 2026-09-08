@@ -34,7 +34,7 @@ function Header() {
                 </a>
 
                 <section className="header-daf-section" aria-labelledby="header-daf-heading">
-                  <p id="header-daf-heading" className="header-daf-heading">Donate with the links below:</p>
+                  <p id="header-daf-heading" className="header-daf-heading">DAF Giving: Donate with the links below:</p>
                   <div className="header-daf-icons">
                     <a className="header-daf-icon header-daf-icon-donors-fund" href="https://thedonorsfund.org/donate/NEILECH-p7711855057422424/264527675" target="_blank" rel="noreferrer" aria-label="Donate through The Donors Fund">
                       <img src="/thedonorsfund.svg" alt="" />
