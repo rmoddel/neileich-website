@@ -178,6 +178,29 @@ test('finalizeDonationPayment does not resend email for an already confirmed don
   assert.equal(queries.some((query) => query.text.includes('update donations set payment_provider')), false)
 })
 
+test('finalizeSponsorshipPayment forceEmail resends even when emails were already marked sent', async () => {
+  const confirmedSponsorship = { ...pendingSponsorship, payment_provider: 'sola', payment_status: 'paid', payment_reference: 'TEST-SPONSOR-REF', status: 'confirmed' }
+  const sent = []
+  const { sql } = makeSponsorshipSql({
+    sponsorship: confirmedSponsorship,
+    finalizedSponsorship: confirmedSponsorship,
+    emailRows: [{ template: 'donor_confirmation_with_attachments' }, { template: 'staff_notification' }],
+    eventRows: [],
+  })
+
+  const result = await finalizeSponsorshipPayment({
+    sponsorshipId: confirmedSponsorship.id,
+    reference: 'TEST-SPONSOR-REF',
+    sql,
+    sendEmailFn: async (message) => sent.push(message),
+    forceEmail: true,
+  })
+
+  assert.equal(result.finalized, true)
+  assert.equal(sent.length, 2)
+  assertPdfAttachment(sent[0].attachments[0], /neileich-sponsorship-receipt-.*\.pdf/)
+})
+
 test('buildSponsorshipConfirmationEmail includes receipt and plaque attachments', () => {
   const email = buildSponsorshipConfirmationEmail({ ...pendingSponsorship, payment_status: 'paid', status: 'confirmed' }, 'TEST-SPONSOR-REF')
 

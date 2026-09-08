@@ -608,7 +608,7 @@ async function sendSponsorshipConfirmationMessages({ sponsorship, reference, sql
   return results.every((result) => result?.ok !== false)
 }
 
-export async function finalizeDonationPayment({ donationId, reference, sql = db(), sendEmailFn = sendEmail }) {
+export async function finalizeDonationPayment({ donationId, reference, sql = db(), sendEmailFn = sendEmail, forceEmail = false }) {
   const rows = await sql`select * from donations where id = ${donationId}::uuid limit 1`
   const donation = rows[0]
   if (!donation) throw new Error(`No donation found for Sola reference ${reference}`)
@@ -617,7 +617,7 @@ export async function finalizeDonationPayment({ donationId, reference, sql = db(
       console.error('Approved Sola reference does not match already paid donation', { donationId: donation.id, existingReference: donation.payment_reference, receivedReference: reference })
       return { finalized: false, emailed: false, donation }
     }
-    const emailed = await sendDonationConfirmationMessages({ donation, reference: donation.payment_reference || reference, sql, sendEmailFn, checkExisting: true })
+    const emailed = await sendDonationConfirmationMessages({ donation, reference: donation.payment_reference || reference, sql, sendEmailFn, checkExisting: !forceEmail })
     return { finalized: false, emailed, donation }
   }
 
@@ -634,7 +634,7 @@ export async function finalizeDonationPayment({ donationId, reference, sql = db(
   return { finalized: true, emailed, donation: finalizedDonation }
 }
 
-export async function finalizeSponsorshipPayment({ sponsorshipId, reference, sql = db(), sendEmailFn = sendEmail }) {
+export async function finalizeSponsorshipPayment({ sponsorshipId, reference, sql = db(), sendEmailFn = sendEmail, forceEmail = false }) {
   let rows = await sql`select s.*, t.name as sponsorship_name from sponsorships s join sponsorship_types t on t.id = s.sponsorship_type_id where s.id = ${sponsorshipId}::uuid limit 1`
   let sponsorship = rows[0]
   if (!sponsorship) throw new Error(`No sponsorship found for Sola reference ${reference}`)
@@ -674,6 +674,6 @@ export async function finalizeSponsorshipPayment({ sponsorshipId, reference, sql
     }
   }
 
-  const emailed = await sendSponsorshipConfirmationMessages({ sponsorship, reference, sql, sendEmailFn, checkExisting: shouldCheckExistingEmail })
+  const emailed = await sendSponsorshipConfirmationMessages({ sponsorship, reference, sql, sendEmailFn, checkExisting: forceEmail ? false : shouldCheckExistingEmail })
   return { finalized: true, emailed, sponsorship }
 }

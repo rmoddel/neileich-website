@@ -15,7 +15,7 @@ export default async function handler(req, res) {
     const reference = donation.payment_reference || String(paymentReference || '').trim()
     if (!reference) return badRequest(res, 'Missing Sola payment reference.')
 
-    const result = await finalizeDonationPayment({ donationId, reference, sql })
+    const result = await finalizeDonationPayment({ donationId, reference, sql, forceEmail: true })
     return res.status(200).json({ ok: true, emailed: result.emailed })
   } catch (error) {
     console.error('Donation receipt resend failed', error)

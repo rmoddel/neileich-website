@@ -15,7 +15,7 @@ export default async function handler(req, res) {
     const reference = sponsorship.payment_reference || String(paymentReference || '').trim()
     if (!reference) return badRequest(res, 'Missing Sola payment reference.')
 
-    const result = await finalizeSponsorshipPayment({ sponsorshipId, reference, sql })
+    const result = await finalizeSponsorshipPayment({ sponsorshipId, reference, sql, forceEmail: true })
     return res.status(200).json({ ok: true, emailed: result.emailed })
   } catch (error) {
     console.error('Sponsorship receipt resend failed', error)
