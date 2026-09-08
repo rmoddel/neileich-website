@@ -216,6 +216,8 @@
 }
 
 .ph-print:hover { background: #f5e7c8; }
+.ph-print:disabled { cursor: wait; opacity: .72; }
+.ph-print:focus-visible { outline: 3px solid rgba(181, 139, 55, .36); outline-offset: 3px; }
 
 @media (max-width: 650px) {
   .ph-preview { width: min(100%, 33rem, calc(77.2727vh - 2.5rem)); }

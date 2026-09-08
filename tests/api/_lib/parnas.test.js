@@ -122,10 +122,14 @@ test('resolveEmailFrom falls back when EMAIL_FROM uses another domain', () => {
 test('notificationRecipients supports one or more admin addresses', () => {
   const original = process.env.NOTIFICATION_EMAIL
   try {
+    delete process.env.NOTIFICATION_EMAIL
+    assert.equal(notificationRecipients(), 'info@neileich.org')
     process.env.NOTIFICATION_EMAIL = 'one@example.com, two@example.com'
-    assert.deepEqual(notificationRecipients(), ['one@example.com', 'two@example.com'])
+    assert.deepEqual(notificationRecipients(), ['info@neileich.org', 'one@example.com', 'two@example.com'])
     process.env.NOTIFICATION_EMAIL = 'one@example.com'
-    assert.equal(notificationRecipients(), 'one@example.com')
+    assert.deepEqual(notificationRecipients(), ['info@neileich.org', 'one@example.com'])
+    process.env.NOTIFICATION_EMAIL = 'INFO@neileich.org'
+    assert.equal(notificationRecipients(), 'info@neileich.org')
   } finally {
     if (original === undefined) delete process.env.NOTIFICATION_EMAIL
     else process.env.NOTIFICATION_EMAIL = original
@@ -235,5 +239,9 @@ test('finalizeSponsorshipPayment marks paid and emails donor receipt attachments
   const staffEmail = sent.find((message) => message.template === 'staff_notification')
   assert.deepEqual(staffEmail.to, notificationRecipients())
   assert.match(staffEmail.text, /A new paid sponsorship was received/)
+  assert.match(staffEmail.text, /The receipt and dedication plaque are attached/)
+  assert.equal(staffEmail.attachments.length, 2)
+  assertPdfAttachment(staffEmail.attachments[0], /neileich-sponsorship-receipt-.*\.pdf/)
+  assertPdfAttachment(staffEmail.attachments[1], /neileich-sponsorship-plaque-.*\.pdf/)
   assert.equal(queries.some((query) => query.text.includes('update sponsorships set payment_provider')), true)
 })

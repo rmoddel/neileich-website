@@ -177,6 +177,8 @@ export default function ParnasHayom() {
   const [overrideVerifying, setOverrideVerifying] = useState(false);
   const [overrideError, setOverrideError] = useState("");
   const [flyerDownloadError, setFlyerDownloadError] = useState(false);
+  const [flyerActionError, setFlyerActionError] = useState("");
+  const [flyerDownloading, setFlyerDownloading] = useState(false);
   const [paying, setPaying] = useState(false);
   const [cardExpiry, setCardExpiry] = useState("");
   const tokenInputs = useRef(null);
@@ -345,6 +347,18 @@ export default function ParnasHayom() {
     pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, 8.5, 11);
     pdf.save(`neileich-dedication-${selectedDate ? dateKey(selectedDate) : "flyer"}.pdf`);
   }, [loadFlyerLibraries, selectedDate]);
+  const handleDownloadFlyer = async () => {
+    setFlyerActionError("");
+    setFlyerDownloading(true);
+    try {
+      await downloadFlyer();
+    } catch (error) {
+      console.error("Flyer PDF generation failed", error);
+      setFlyerActionError("The dedication PDF could not be generated. Please try again.");
+    } finally {
+      setFlyerDownloading(false);
+    }
+  };
   useEffect(() => {
     if (!pendingSponsorshipId || !receiptToken || paymentStatus !== "processing") return;
     let cancelled = false;
@@ -450,10 +464,6 @@ export default function ParnasHayom() {
   const h = selectedDate && hebrew(selectedDate);
   const canRecurring = selectedType?.recurring_enabled;
   const previewLeadIn = dedicationLeadIn(selectedType?.name);
-  const printFlyer = () => {
-    fitFlyerPreview(previewRef.current);
-    window.print();
-  };
   useEffect(() => {
     const preview = previewRef.current;
     if (!preview) return undefined;
@@ -497,7 +507,7 @@ export default function ParnasHayom() {
         <img src="/logo-english.png" alt="Neileich" />
         <p className="ph-success-kicker">SPONSORSHIP CONFIRMED</p>
         <h1>Thank you for supporting Neileich.</h1>
-        <p>{confirmationPreview ? "This is a local preview of the confirmed-payment screen. No payment was made." : receiptEmailFailed ? "Your payment is confirmed, but the receipt and plaque email could not be sent automatically. Please contact Neileich so we can resend it." : flyerDownloadError ? "Your payment is confirmed and a receipt is on its way by email. Your flyer could not download automatically; please use the Print flyer button before leaving this page next time." : "Your payment is confirmed. Your dedication flyer has been downloaded and a receipt is on its way by email."}</p>
+        <p>{confirmationPreview ? "This is a local preview of the confirmed-payment screen. No payment was made." : receiptEmailFailed ? "Your payment is confirmed, but the receipt and plaque email could not be sent automatically. Please contact Neileich so we can resend it." : flyerDownloadError ? "Your payment is confirmed and a receipt is on its way by email. Your flyer could not download automatically; please use the Download dedication PDF button before leaving this page next time." : "Your payment is confirmed. Your dedication flyer has been downloaded and a receipt is on its way by email."}</p>
         {receipt && (
           <section className="ph-receipt" aria-label="Sponsorship receipt">
             <h2>Your sponsorship receipt</h2>
@@ -818,9 +828,10 @@ export default function ParnasHayom() {
               </small>
             </div>
           </div>
-          <button type="button" className="ph-print" onClick={printFlyer}>
-            Print flyer / Save as PDF
+          <button type="button" className="ph-print" onClick={handleDownloadFlyer} disabled={flyerDownloading}>
+            {flyerDownloading ? "Preparing PDF…" : "Download dedication PDF"}
           </button>
+          {flyerActionError && <p className="ph-error">{flyerActionError}</p>}
           {checkoutError && <p className="ph-error">{checkoutError}</p>}
           <button className="ph-pay" disabled={paying}>
             {paying

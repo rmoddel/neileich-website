@@ -30,6 +30,7 @@ export function validCheckout(body) {
 const DONATION_EIN = '26-4527675'
 export const DEFAULT_EMAIL_FROM = 'Neileich <receipts@neileich.org>'
 export const VERIFIED_EMAIL_DOMAIN = 'neileich.org'
+const DEFAULT_NOTIFICATION_EMAIL = 'info@neileich.org'
 const PDF_FONT_NAME = 'NotoSansHebrew'
 const HEBREW_RE = /[\u0590-\u05ff]/
 let pdfFonts = null
@@ -259,11 +260,18 @@ function sponsorshipLeadIn(sponsorshipName) {
 }
 
 export function notificationRecipients() {
-  const recipients = String(process.env.NOTIFICATION_EMAIL || 'info@neileich.org')
+  const configuredRecipients = String(process.env.NOTIFICATION_EMAIL || '')
     .split(',')
     .map((recipient) => recipient.trim())
     .filter(Boolean)
-  return recipients.length > 1 ? recipients : recipients[0] || 'info@neileich.org'
+  const seen = new Set()
+  const recipients = [DEFAULT_NOTIFICATION_EMAIL, ...configuredRecipients].filter((recipient) => {
+    const key = recipient.toLowerCase()
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+  return recipients.length > 1 ? recipients : recipients[0]
 }
 
 export function buildDonationReceiptText(donation, reference = donation.payment_reference) {
@@ -501,10 +509,17 @@ export function buildSponsorshipPlaquePdf(sponsorship) {
   return pdf
 }
 
-export function buildSponsorshipConfirmationEmail(sponsorship, reference = sponsorship.payment_reference) {
+function buildSponsorshipPdfAttachments(sponsorship, reference = sponsorship.payment_reference) {
   const shortId = String(sponsorship.id).slice(0, 8)
   const receiptPdf = buildSponsorshipReceiptPdf(sponsorship, reference)
   const plaquePdf = buildSponsorshipPlaquePdf(sponsorship)
+  return [
+    pdfAttachment(`neileich-sponsorship-receipt-${shortId}.pdf`, receiptPdf),
+    pdfAttachment(`neileich-sponsorship-plaque-${shortId}.pdf`, plaquePdf),
+  ]
+}
+
+export function buildSponsorshipConfirmationEmail(sponsorship, reference = sponsorship.payment_reference, attachments = buildSponsorshipPdfAttachments(sponsorship, reference)) {
   const facts = buildSponsorshipFacts(sponsorship, reference)
   const text = `Thank you, ${sponsorship.donor_name}.\n\nYour Neileich sponsorship is confirmed.\n\n${facts}\n\nYour PDF receipt and dedication plaque are attached.`
   const html = `<p>Thank you, ${escapeMarkup(sponsorship.donor_name)}.</p><p>Your Neileich sponsorship is confirmed.</p><p><strong>Sponsorship:</strong> ${escapeMarkup(sponsorship.sponsorship_name)}<br><strong>Amount:</strong> ${escapeMarkup(donationMoney(sponsorship.amount_cents, sponsorship.currency))}<br><strong>Date:</strong> ${escapeMarkup(sponsorshipDate(sponsorship.gregorian_date))}<br><strong>Hebrew date:</strong> ${escapeMarkup(sponsorshipHebrewDate(sponsorship))}<br><strong>Payment reference:</strong> ${escapeMarkup(reference || 'Unavailable')}</p><p>Your PDF receipt and dedication plaque are attached.</p>`
@@ -512,35 +527,34 @@ export function buildSponsorshipConfirmationEmail(sponsorship, reference = spons
     subject: 'Your Neileich sponsorship is confirmed',
     text,
     html,
-    attachments: [
-      pdfAttachment(`neileich-sponsorship-receipt-${shortId}.pdf`, receiptPdf),
-      pdfAttachment(`neileich-sponsorship-plaque-${shortId}.pdf`, plaquePdf),
-    ],
+    attachments,
   }
 }
 
-export function buildSponsorshipStaffNotificationEmail(sponsorship, reference = sponsorship.payment_reference) {
+export function buildSponsorshipStaffNotificationEmail(sponsorship, reference = sponsorship.payment_reference, attachments = buildSponsorshipPdfAttachments(sponsorship, reference)) {
   return {
     subject: `New Neileich sponsorship: ${sponsorship.sponsorship_name}`,
-    text: `A new paid sponsorship was received.\n\nDonor: ${sponsorship.donor_name}\nEmail: ${sponsorship.donor_email}\nPhone: ${sponsorship.donor_phone || '—'}\n\n${buildSponsorshipFacts(sponsorship, reference)}`,
+    text: `A new paid sponsorship was received.\n\nDonor: ${sponsorship.donor_name}\nEmail: ${sponsorship.donor_email}\nPhone: ${sponsorship.donor_phone || '—'}\n\n${buildSponsorshipFacts(sponsorship, reference)}\n\nThe receipt and dedication plaque are attached.`,
+    attachments,
   }
 }
 
 async function recordEmailEvent(sql, { to, template, sponsorshipId, donationId, status, providerMessageId, error }) {
   if (!sql) return
   try {
-    if (status === 'sent') {
-      if (donationId) {
-        await sql`insert into email_events (sponsorship_id, donation_id, recipient, template, status, provider_message_id, sent_at) values (${sponsorshipId || null}, ${donationId}, ${to}, ${template}, 'sent', ${providerMessageId || null}, now())`
+    const recipients = (Array.isArray(to) ? to : [to]).filter(Boolean)
+    for (const recipient of recipients) {
+      if (status === 'sent') {
+        if (donationId) {
+          await sql`insert into email_events (sponsorship_id, donation_id, recipient, template, status, provider_message_id, sent_at) values (${sponsorshipId || null}, ${donationId}, ${recipient}, ${template}, 'sent', ${providerMessageId || null}, now())`
+        } else {
+          await sql`insert into email_events (sponsorship_id, recipient, template, status, provider_message_id, sent_at) values (${sponsorshipId || null}, ${recipient}, ${template}, 'sent', ${providerMessageId || null}, now())`
+        }
+      } else if (donationId) {
+        await sql`insert into email_events (sponsorship_id, donation_id, recipient, template, status, error) values (${sponsorshipId || null}, ${donationId}, ${recipient}, ${template}, 'failed', ${String(error?.message || error).slice(0, 500)})`
       } else {
-        await sql`insert into email_events (sponsorship_id, recipient, template, status, provider_message_id, sent_at) values (${sponsorshipId || null}, ${to}, ${template}, 'sent', ${providerMessageId || null}, now())`
+        await sql`insert into email_events (sponsorship_id, recipient, template, status, error) values (${sponsorshipId || null}, ${recipient}, ${template}, 'failed', ${String(error?.message || error).slice(0, 500)})`
       }
-      return
-    }
-    if (donationId) {
-      await sql`insert into email_events (sponsorship_id, donation_id, recipient, template, status, error) values (${sponsorshipId || null}, ${donationId}, ${to}, ${template}, 'failed', ${String(error?.message || error).slice(0, 500)})`
-    } else {
-      await sql`insert into email_events (sponsorship_id, recipient, template, status, error) values (${sponsorshipId || null}, ${to}, ${template}, 'failed', ${String(error?.message || error).slice(0, 500)})`
     }
   } catch (eventError) {
     console.error('Email event logging failed', eventError)
@@ -612,8 +626,9 @@ async function sendSponsorshipConfirmationMessages({ sponsorship, reference, sql
   const shouldSendDonor = !existingTemplates.has('donor_confirmation_with_attachments')
   const shouldSendStaff = !existingTemplates.has('staff_notification')
   if (!shouldSendDonor && !shouldSendStaff) return false
-  const donorEmail = buildSponsorshipConfirmationEmail(sponsorship, reference)
-  const staffEmail = buildSponsorshipStaffNotificationEmail(sponsorship, reference)
+  const attachments = buildSponsorshipPdfAttachments(sponsorship, reference)
+  const donorEmail = buildSponsorshipConfirmationEmail(sponsorship, reference, attachments)
+  const staffEmail = buildSponsorshipStaffNotificationEmail(sponsorship, reference, attachments)
   const results = await Promise.all([
     shouldSendDonor
       ? sendEmailFn({ to: sponsorship.donor_email, ...donorEmail, sponsorshipId: sponsorship.id, template: 'donor_confirmation_with_attachments' })
