@@ -1,5 +1,7 @@
 import { neon } from '@neondatabase/serverless'
 import { HDate, yahrzeit } from '@hebcal/hdate'
+import { jsPDF } from 'jspdf'
+import { readFileSync } from 'node:fs'
 
 export const TIMEZONE = 'America/New_York'
 
@@ -28,6 +30,10 @@ export function validCheckout(body) {
 const DONATION_EIN = '26-4527675'
 export const DEFAULT_EMAIL_FROM = 'Neileich <receipts@neileich.org>'
 export const VERIFIED_EMAIL_DOMAIN = 'neileich.org'
+const PDF_FONT_NAME = 'NotoSansHebrew'
+const HEBREW_RE = /[\u0590-\u05ff]/
+let pdfFonts = null
+let logoDataUri = undefined
 
 export function senderDomain(value) {
   const text = String(value || '').trim()
@@ -59,6 +65,188 @@ function escapeMarkup(value) {
 function clippedText(value, maxLength) {
   const text = String(value || '').trim()
   return text.length > maxLength ? `${text.slice(0, maxLength - 3)}...` : text
+}
+
+function pdfAttachment(filename, pdf) {
+  return {
+    filename,
+    content: Buffer.from(pdf.output('arraybuffer')).toString('base64'),
+    contentType: 'application/pdf',
+  }
+}
+
+function loadPdfFonts() {
+  if (!pdfFonts) {
+    pdfFonts = {
+      regular: readFileSync(new URL('../../server-assets/fonts/NotoSansHebrew-Regular.ttf', import.meta.url)).toString('base64'),
+      bold: readFileSync(new URL('../../server-assets/fonts/NotoSansHebrew-Bold.ttf', import.meta.url)).toString('base64'),
+    }
+  }
+  return pdfFonts
+}
+
+function registerPdfFonts(pdf) {
+  const fonts = loadPdfFonts()
+  pdf.addFileToVFS('NotoSansHebrew-Regular.ttf', fonts.regular)
+  pdf.addFont('NotoSansHebrew-Regular.ttf', PDF_FONT_NAME, 'normal')
+  pdf.addFileToVFS('NotoSansHebrew-Bold.ttf', fonts.bold)
+  pdf.addFont('NotoSansHebrew-Bold.ttf', PDF_FONT_NAME, 'bold')
+  pdf.setFont(PDF_FONT_NAME, 'normal')
+}
+
+function loadLogoDataUri() {
+  if (logoDataUri !== undefined) return logoDataUri
+  try {
+    logoDataUri = `data:image/png;base64,${readFileSync(new URL('../../public/logo-english.png', import.meta.url)).toString('base64')}`
+  } catch (error) {
+    console.error('Plaque PDF logo unavailable', error)
+    logoDataUri = null
+  }
+  return logoDataUri
+}
+
+function drawLogoBox(pdf, x, y, width, height) {
+  pdf.setFillColor(255, 255, 255)
+  pdf.setDrawColor(235, 238, 238)
+  pdf.setLineWidth(1)
+  pdf.roundedRect(x, y, width, height, 8, 8, 'FD')
+  const logo = loadLogoDataUri()
+  if (logo) {
+    const imageRatio = 2170 / 1009
+    const maxWidth = width - 42
+    const maxHeight = height - 24
+    let imageWidth = maxWidth
+    let imageHeight = imageWidth / imageRatio
+    if (imageHeight > maxHeight) {
+      imageHeight = maxHeight
+      imageWidth = imageHeight * imageRatio
+    }
+    pdf.addImage(logo, 'PNG', x + (width - imageWidth) / 2, y + (height - imageHeight) / 2, imageWidth, imageHeight)
+    return
+  }
+  pdf.setTextColor(36, 83, 92)
+  pdf.setFont('times', 'bold')
+  pdf.setFontSize(30)
+  pdf.text('Neileich', x + width / 2, y + height / 2 + 10, { align: 'center' })
+}
+
+function pdfUsesRtl(value) {
+  const text = String(value || '')
+  const hebrew = (text.match(/[\u0590-\u05ff]/g) || []).length
+  const latin = (text.match(/[A-Za-z]/g) || []).length
+  return hebrew > latin
+}
+
+function setPdfFontForText(pdf, text, style = 'normal', latinFont = 'helvetica') {
+  pdf.setFont(HEBREW_RE.test(String(text || '')) ? PDF_FONT_NAME : latinFont, style)
+}
+
+function addWrappedText(pdf, text, x, y, maxWidth, lineHeight, options = {}) {
+  const { rtl, ...textOptions } = options
+  pdf.setR2L(Boolean(rtl))
+  const lines = pdf.splitTextToSize(String(text || ''), maxWidth)
+  pdf.text(lines, x, y, textOptions)
+  pdf.setR2L(false)
+  return y + (Array.isArray(lines) ? lines.length : 1) * lineHeight
+}
+
+function addReceiptLine(pdf, line, y) {
+  const mixed = String(line || '').match(/^([^:]+:\s*)(.+)$/)
+  if (mixed && HEBREW_RE.test(mixed[2])) {
+    pdf.setFont('helvetica', 'normal')
+    y = addWrappedText(pdf, mixed[1].trim(), 72, y, 468, 16)
+    dedicationTypeParts(mixed[2]).forEach((part) => {
+      setPdfFontForText(pdf, part)
+      y = addWrappedText(pdf, part, 88, y, 452, 16, { rtl: pdfUsesRtl(part) })
+    })
+    return y
+  }
+  setPdfFontForText(pdf, line)
+  return addWrappedText(pdf, line, 72, y, 468, 16, { rtl: pdfUsesRtl(line) })
+}
+
+function buildReceiptPdf(title, body) {
+  const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'letter' })
+  registerPdfFonts(pdf)
+  pdf.setProperties({ title })
+  pdf.setFillColor(16, 45, 54)
+  pdf.rect(0, 0, 612, 86, 'F')
+  pdf.setTextColor(231, 199, 126)
+  pdf.setFont('helvetica', 'bold')
+  pdf.setFontSize(18)
+  pdf.text(title, 72, 54)
+  pdf.setTextColor(28, 61, 70)
+  pdf.setFont('helvetica', 'normal')
+  pdf.setFontSize(11)
+  let y = 124
+  body.split('\n').slice(2).forEach((line) => {
+    if (!line) {
+      y += 10
+      return
+    }
+    if (y > 725) {
+      pdf.addPage()
+      y = 72
+    }
+    y = addReceiptLine(pdf, line, y)
+  })
+  return pdf
+}
+
+function fitLines(pdf, text, maxWidth, maxHeight, initialSize, minSize = 15) {
+  let size = initialSize
+  let lines = []
+  do {
+    pdf.setFontSize(size)
+    lines = pdf.splitTextToSize(String(text || ''), maxWidth)
+    if (lines.length * size * 1.18 <= maxHeight || size <= minSize) break
+    size -= 2
+  } while (size > minSize)
+  return { size, lines, lineHeight: size * 1.18 }
+}
+
+function drawPlaqueFrame(pdf, width, height) {
+  pdf.setFillColor(16, 45, 54)
+  pdf.rect(0, 0, width, height, 'F')
+  pdf.setDrawColor(231, 199, 126)
+  pdf.setLineWidth(1.5)
+  pdf.roundedRect(24, 24, width - 48, height - 48, 14, 14, 'S')
+  pdf.setDrawColor(217, 230, 226)
+  pdf.setLineWidth(1)
+  pdf.rect(48, 48, width - 96, height - 96, 'S')
+}
+
+function drawCenteredText(pdf, text, x, y, maxWidth, maxHeight, size, options = {}) {
+  pdf.setR2L(Boolean(options.rtl))
+  const fitted = fitLines(pdf, text, maxWidth, maxHeight, size, options.minSize)
+  pdf.setFontSize(fitted.size)
+  const top = y - ((fitted.lines.length - 1) * fitted.lineHeight) / 2
+  pdf.text(fitted.lines, x, top, { align: 'center' })
+  pdf.setR2L(false)
+}
+
+function dedicationTypeParts(value) {
+  return String(value || '')
+    .split('/')
+    .map((part) => part.trim())
+    .filter(Boolean)
+}
+
+function sponsorshipLeadIn(sponsorshipName) {
+  const name = String(sponsorshipName || '').toLowerCase()
+  if (name.includes('night seder')) return "Tonight's Night Seder is dedicated"
+  if (name.includes('shabbos')) return 'This Shabbos program is dedicated'
+  if (name.includes('month')) return 'This month of Neileich programs is dedicated'
+  if (name.includes('day')) return "Today's Neileich learning is dedicated"
+  return `This ${sponsorshipName || 'Neileich program'} is dedicated`
+}
+
+export function notificationRecipients() {
+  const recipients = String(process.env.NOTIFICATION_EMAIL || 'info@neileich.org')
+    .split(',')
+    .map((recipient) => recipient.trim())
+    .filter(Boolean)
+  return recipients.length > 1 ? recipients : recipients[0] || 'info@neileich.org'
 }
 
 export function buildDonationReceiptText(donation, reference = donation.payment_reference) {
@@ -101,21 +289,57 @@ export function buildDonationPlaqueSvg(donation) {
 </svg>`
 }
 
+export function buildDonationReceiptPdf(donation, reference = donation.payment_reference) {
+  return buildReceiptPdf('Neileich Donation Receipt', buildDonationReceiptText(donation, reference))
+}
+
+export function buildDonationPlaquePdf(donation) {
+  const pdf = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'letter' })
+  registerPdfFonts(pdf)
+  const width = 792
+  const height = 612
+  drawPlaqueFrame(pdf, width, height)
+  pdf.setProperties({ title: 'Neileich Donation Plaque' })
+  drawLogoBox(pdf, width / 2 - 142, 74, 284, 110)
+  pdf.setTextColor(231, 199, 126)
+  pdf.setFont('helvetica', 'bold')
+  pdf.setFontSize(17)
+  pdf.text('Building Belonging. Thriving children. Strong Kehila.', width / 2, 222, { align: 'center' })
+  pdf.setDrawColor(217, 230, 226)
+  pdf.line(160, 262, width - 160, 262)
+  pdf.setTextColor(255, 255, 255)
+  pdf.setFontSize(26)
+  pdf.text('Thank you for your donation', width / 2, 315, { align: 'center' })
+  pdf.setTextColor(255, 247, 227)
+  setPdfFontForText(pdf, donation.donor_name, 'normal', 'times')
+  drawCenteredText(pdf, clippedText(donation.donor_name, 60), width / 2, 390, 520, 82, 44, { rtl: pdfUsesRtl(donation.donor_name) })
+  pdf.setTextColor(231, 199, 126)
+  pdf.setFont('helvetica', 'bold')
+  pdf.setFontSize(26)
+  pdf.text(donationMoney(donation.amount_cents, donation.currency), width / 2, 468, { align: 'center' })
+  pdf.setTextColor(217, 230, 226)
+  pdf.setFontSize(17)
+  pdf.text(donationDate(donation.created_at), width / 2, 510, { align: 'center' })
+  pdf.setFontSize(15)
+  pdf.text('Your support helps children and families thrive.', width / 2, 548, { align: 'center' })
+  return pdf
+}
+
 export function buildDonationConfirmationEmail(donation, reference = donation.payment_reference) {
   const amount = donationMoney(donation.amount_cents, donation.currency)
   const date = donationDate(donation.created_at)
   const shortId = String(donation.id).slice(0, 8)
-  const receiptText = buildDonationReceiptText(donation, reference)
-  const plaqueSvg = buildDonationPlaqueSvg(donation)
-  const text = `Thank you, ${donation.donor_name}.\n\nYour donation to Neileich has been received.\n\nAmount: ${amount}\nDate: ${date}\nPayment reference: ${reference || 'Unavailable'}\n\nYour receipt and donation plaque are attached.`
-  const html = `<p>Thank you, ${escapeMarkup(donation.donor_name)}.</p><p>Your donation to Neileich has been received.</p><p><strong>Amount:</strong> ${escapeMarkup(amount)}<br><strong>Date:</strong> ${escapeMarkup(date)}<br><strong>Payment reference:</strong> ${escapeMarkup(reference || 'Unavailable')}</p><p>Your receipt and donation plaque are attached.</p>`
+  const receiptPdf = buildDonationReceiptPdf(donation, reference)
+  const plaquePdf = buildDonationPlaquePdf(donation)
+  const text = `Thank you, ${donation.donor_name}.\n\nYour donation to Neileich has been received.\n\nAmount: ${amount}\nDate: ${date}\nPayment reference: ${reference || 'Unavailable'}\n\nYour PDF receipt and donation plaque are attached.`
+  const html = `<p>Thank you, ${escapeMarkup(donation.donor_name)}.</p><p>Your donation to Neileich has been received.</p><p><strong>Amount:</strong> ${escapeMarkup(amount)}<br><strong>Date:</strong> ${escapeMarkup(date)}<br><strong>Payment reference:</strong> ${escapeMarkup(reference || 'Unavailable')}</p><p>Your PDF receipt and donation plaque are attached.</p>`
   return {
     subject: 'Thank you for your Neileich donation',
     text,
     html,
     attachments: [
-      { filename: `neileich-donation-receipt-${shortId}.txt`, content: receiptText, contentType: 'text/plain' },
-      { filename: `neileich-donation-plaque-${shortId}.svg`, content: plaqueSvg, contentType: 'image/svg+xml' },
+      pdfAttachment(`neileich-donation-receipt-${shortId}.pdf`, receiptPdf),
+      pdfAttachment(`neileich-donation-plaque-${shortId}.pdf`, plaquePdf),
     ],
   }
 }
@@ -195,20 +419,85 @@ export function buildSponsorshipPlaqueSvg(sponsorship, reference = sponsorship.p
 </svg>`
 }
 
+export function buildSponsorshipReceiptPdf(sponsorship, reference = sponsorship.payment_reference) {
+  return buildReceiptPdf('Neileich Sponsorship Receipt', buildSponsorshipReceiptText(sponsorship, reference))
+}
+
+export function buildSponsorshipPlaquePdf(sponsorship) {
+  const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'letter' })
+  registerPdfFonts(pdf)
+  drawPlaqueFrame(pdf, 612, 792)
+  pdf.setProperties({ title: 'Neileich Sponsorship Plaque' })
+  pdf.setTextColor(231, 199, 126)
+  pdf.setFont('helvetica', 'bold')
+  pdf.setFontSize(16)
+  pdf.text('PARNAS HAYOM', 306, 88, { align: 'center' })
+  drawLogoBox(pdf, 191, 112, 230, 92)
+  pdf.setTextColor(217, 230, 226)
+  pdf.setFontSize(15)
+  pdf.text('Building Belonging. Thriving children. Strong Kehila.', 306, 232, { align: 'center' })
+  pdf.setDrawColor(217, 230, 226)
+  pdf.line(84, 284, 528, 284)
+  pdf.setDrawColor(231, 199, 126)
+  pdf.setLineWidth(2.5)
+  pdf.line(280, 284, 332, 284)
+  pdf.setTextColor(217, 230, 226)
+  pdf.setFontSize(18)
+  pdf.setFont('helvetica', 'normal')
+  drawCenteredText(pdf, sponsorshipLeadIn(sponsorship.sponsorship_name), 306, 348, 440, 52, 18)
+  pdf.setTextColor(231, 199, 126)
+  pdf.setFontSize(24)
+  dedicationTypeParts(sponsorship.dedication_type).forEach((part, index, parts) => {
+    const y = parts.length > 1 ? 392 + index * 26 : 404
+    setPdfFontForText(pdf, part, 'bold')
+    drawCenteredText(pdf, clippedText(part, 68), 306, y, 460, 28, 22, { minSize: 15, rtl: HEBREW_RE.test(part) })
+  })
+  pdf.setTextColor(255, 247, 227)
+  setPdfFontForText(pdf, sponsorship.dedication_text, 'normal', 'times')
+  drawCenteredText(pdf, clippedText(sponsorship.dedication_text, 130), 306, 500, 470, 120, 46, { minSize: 18, rtl: pdfUsesRtl(sponsorship.dedication_text) })
+  pdf.setFont('helvetica', 'bold')
+  pdf.setDrawColor(217, 230, 226)
+  pdf.setLineWidth(1)
+  pdf.line(84, 610, 528, 610)
+  pdf.setDrawColor(231, 199, 126)
+  pdf.setLineWidth(2.5)
+  pdf.line(280, 610, 332, 610)
+  pdf.setFillColor(231, 199, 126)
+  pdf.roundedRect(136, 638, 340, 44, 22, 22, 'F')
+  pdf.setTextColor(16, 45, 54)
+  pdf.setFontSize(14)
+  pdf.setFont('helvetica', 'bold')
+  drawCenteredText(pdf, sponsorshipDate(sponsorship.gregorian_date), 306, 656, 310, 18, 13, { minSize: 9 })
+  pdf.setFont(PDF_FONT_NAME, 'bold')
+  drawCenteredText(pdf, sponsorshipHebrewDate(sponsorship), 306, 672, 310, 18, 13, { minSize: 9, rtl: true })
+  pdf.setTextColor(217, 230, 226)
+  pdf.setFontSize(18)
+  if (pdfUsesRtl(sponsorshipPublicName(sponsorship))) {
+    pdf.setFont('helvetica', 'bold')
+    drawCenteredText(pdf, 'Sponsored by', 306, 712, 440, 24, 15, { minSize: 12 })
+    pdf.setFont(PDF_FONT_NAME, 'bold')
+    drawCenteredText(pdf, sponsorshipPublicName(sponsorship), 306, 734, 440, 32, 18, { minSize: 12, rtl: true })
+  } else {
+    pdf.setFont('helvetica', 'bold')
+    drawCenteredText(pdf, `Sponsored by ${sponsorshipPublicName(sponsorship)}`, 306, 724, 440, 38, 18, { minSize: 12 })
+  }
+  return pdf
+}
+
 export function buildSponsorshipConfirmationEmail(sponsorship, reference = sponsorship.payment_reference) {
   const shortId = String(sponsorship.id).slice(0, 8)
-  const receiptText = buildSponsorshipReceiptText(sponsorship, reference)
-  const plaqueSvg = buildSponsorshipPlaqueSvg(sponsorship, reference)
+  const receiptPdf = buildSponsorshipReceiptPdf(sponsorship, reference)
+  const plaquePdf = buildSponsorshipPlaquePdf(sponsorship)
   const facts = buildSponsorshipFacts(sponsorship, reference)
-  const text = `Thank you, ${sponsorship.donor_name}.\n\nYour Neileich sponsorship is confirmed.\n\n${facts}\n\nYour receipt and dedication plaque are attached.`
-  const html = `<p>Thank you, ${escapeMarkup(sponsorship.donor_name)}.</p><p>Your Neileich sponsorship is confirmed.</p><p><strong>Sponsorship:</strong> ${escapeMarkup(sponsorship.sponsorship_name)}<br><strong>Amount:</strong> ${escapeMarkup(donationMoney(sponsorship.amount_cents, sponsorship.currency))}<br><strong>Date:</strong> ${escapeMarkup(sponsorshipDate(sponsorship.gregorian_date))}<br><strong>Hebrew date:</strong> ${escapeMarkup(sponsorshipHebrewDate(sponsorship))}<br><strong>Payment reference:</strong> ${escapeMarkup(reference || 'Unavailable')}</p><p>Your receipt and dedication plaque are attached.</p>`
+  const text = `Thank you, ${sponsorship.donor_name}.\n\nYour Neileich sponsorship is confirmed.\n\n${facts}\n\nYour PDF receipt and dedication plaque are attached.`
+  const html = `<p>Thank you, ${escapeMarkup(sponsorship.donor_name)}.</p><p>Your Neileich sponsorship is confirmed.</p><p><strong>Sponsorship:</strong> ${escapeMarkup(sponsorship.sponsorship_name)}<br><strong>Amount:</strong> ${escapeMarkup(donationMoney(sponsorship.amount_cents, sponsorship.currency))}<br><strong>Date:</strong> ${escapeMarkup(sponsorshipDate(sponsorship.gregorian_date))}<br><strong>Hebrew date:</strong> ${escapeMarkup(sponsorshipHebrewDate(sponsorship))}<br><strong>Payment reference:</strong> ${escapeMarkup(reference || 'Unavailable')}</p><p>Your PDF receipt and dedication plaque are attached.</p>`
   return {
     subject: 'Your Neileich sponsorship is confirmed',
     text,
     html,
     attachments: [
-      { filename: `neileich-sponsorship-receipt-${shortId}.txt`, content: receiptText, contentType: 'text/plain' },
-      { filename: `neileich-sponsorship-plaque-${shortId}.svg`, content: plaqueSvg, contentType: 'image/svg+xml' },
+      pdfAttachment(`neileich-sponsorship-receipt-${shortId}.pdf`, receiptPdf),
+      pdfAttachment(`neileich-sponsorship-plaque-${shortId}.pdf`, plaquePdf),
     ],
   }
 }
@@ -295,7 +584,7 @@ async function sendDonationConfirmationMessages({ donation, reference, sql, send
       ? sendEmailFn({ to: donation.donor_email, ...donorEmail, donationId: donation.id, template: 'donor_donation_confirmation' })
       : null,
     shouldSendStaff
-      ? sendEmailFn({ to: process.env.NOTIFICATION_EMAIL || 'info@neileich.org', ...staffEmail, donationId: donation.id, template: 'staff_donation_notification' })
+      ? sendEmailFn({ to: notificationRecipients(), ...staffEmail, donationId: donation.id, template: 'staff_donation_notification' })
       : null,
   ].filter(Boolean))
   return results.every((result) => result?.ok !== false)
@@ -313,7 +602,7 @@ async function sendSponsorshipConfirmationMessages({ sponsorship, reference, sql
       ? sendEmailFn({ to: sponsorship.donor_email, ...donorEmail, sponsorshipId: sponsorship.id, template: 'donor_confirmation_with_attachments' })
       : null,
     shouldSendStaff
-      ? sendEmailFn({ to: process.env.NOTIFICATION_EMAIL || 'info@neileich.org', ...staffEmail, sponsorshipId: sponsorship.id, template: 'staff_notification' })
+      ? sendEmailFn({ to: notificationRecipients(), ...staffEmail, sponsorshipId: sponsorship.id, template: 'staff_notification' })
       : null,
   ].filter(Boolean))
   return results.every((result) => result?.ok !== false)

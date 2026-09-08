@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { DEFAULT_EMAIL_FROM, buildDonationConfirmationEmail, buildSponsorshipConfirmationEmail, finalizeDonationPayment, finalizeSponsorshipPayment, resolveEmailFrom, senderDomain } from '../../../api/_lib/parnas.js'
+import { DEFAULT_EMAIL_FROM, buildDonationConfirmationEmail, buildSponsorshipConfirmationEmail, finalizeDonationPayment, finalizeSponsorshipPayment, notificationRecipients, resolveEmailFrom, senderDomain } from '../../../api/_lib/parnas.js'
 
 const pendingDonation = {
   id: '11111111-1111-4111-8111-111111111111',
@@ -76,19 +76,21 @@ function makeSponsorshipSql({
   return { sql, queries }
 }
 
+function assertPdfAttachment(attachment, filenamePattern) {
+  assert.match(attachment.filename, filenamePattern)
+  assert.equal(attachment.contentType, 'application/pdf')
+  assert.equal(Buffer.from(attachment.content, 'base64').slice(0, 4).toString(), '%PDF')
+}
+
 test('buildDonationConfirmationEmail includes receipt and plaque attachments', () => {
   const email = buildDonationConfirmationEmail({ ...pendingDonation, payment_status: 'paid', status: 'confirmed' }, 'TEST-REF-123')
 
   assert.equal(email.subject, 'Thank you for your Neileich donation')
   assert.match(email.text, /Thank you, Test Donor/)
-  assert.match(email.text, /Your receipt and donation plaque are attached/)
+  assert.match(email.text, /Your PDF receipt and donation plaque are attached/)
   assert.equal(email.attachments.length, 2)
-  assert.equal(email.attachments[0].contentType, 'text/plain')
-  assert.match(email.attachments[0].content, /Neileich Donation Receipt/)
-  assert.match(email.attachments[0].content, /Payment reference: TEST-REF-123/)
-  assert.equal(email.attachments[1].contentType, 'image/svg+xml')
-  assert.match(email.attachments[1].content, /Thank you for your donation/)
-  assert.match(email.attachments[1].content, /Test Donor/)
+  assertPdfAttachment(email.attachments[0], /neileich-donation-receipt-.*\.pdf/)
+  assertPdfAttachment(email.attachments[1], /neileich-donation-plaque-.*\.pdf/)
 })
 
 test('resolveEmailFrom keeps a neileich.org sender', () => {
@@ -117,6 +119,19 @@ test('resolveEmailFrom falls back when EMAIL_FROM uses another domain', () => {
   }
 })
 
+test('notificationRecipients supports one or more admin addresses', () => {
+  const original = process.env.NOTIFICATION_EMAIL
+  try {
+    process.env.NOTIFICATION_EMAIL = 'one@example.com, two@example.com'
+    assert.deepEqual(notificationRecipients(), ['one@example.com', 'two@example.com'])
+    process.env.NOTIFICATION_EMAIL = 'one@example.com'
+    assert.equal(notificationRecipients(), 'one@example.com')
+  } finally {
+    if (original === undefined) delete process.env.NOTIFICATION_EMAIL
+    else process.env.NOTIFICATION_EMAIL = original
+  }
+})
+
 test('finalizeDonationPayment marks the donation paid and emails donor attachments once', async () => {
   const sent = []
   const { sql, queries } = makeSql()
@@ -135,10 +150,10 @@ test('finalizeDonationPayment marks the donation paid and emails donor attachmen
   const donorEmail = sent.find((message) => message.template === 'donor_donation_confirmation')
   assert.equal(donorEmail.to, pendingDonation.donor_email)
   assert.equal(donorEmail.attachments.length, 2)
-  assert.match(donorEmail.text, /receipt and donation plaque are attached/)
+  assert.match(donorEmail.text, /PDF receipt and donation plaque are attached/)
 
   const staffEmail = sent.find((message) => message.template === 'staff_donation_notification')
-  assert.equal(staffEmail.to, process.env.NOTIFICATION_EMAIL || 'info@neileich.org')
+  assert.deepEqual(staffEmail.to, notificationRecipients())
   assert.match(staffEmail.text, /A new paid donation was received/)
   assert.equal(queries.some((query) => query.text.includes("status = 'confirmed'")), true)
 })
@@ -167,14 +182,10 @@ test('buildSponsorshipConfirmationEmail includes receipt and plaque attachments'
   const email = buildSponsorshipConfirmationEmail({ ...pendingSponsorship, payment_status: 'paid', status: 'confirmed' }, 'TEST-SPONSOR-REF')
 
   assert.equal(email.subject, 'Your Neileich sponsorship is confirmed')
-  assert.match(email.text, /Your receipt and dedication plaque are attached/)
+  assert.match(email.text, /Your PDF receipt and dedication plaque are attached/)
   assert.equal(email.attachments.length, 2)
-  assert.equal(email.attachments[0].contentType, 'text/plain')
-  assert.match(email.attachments[0].content, /Neileich Sponsorship Receipt/)
-  assert.match(email.attachments[0].content, /Payment reference: TEST-SPONSOR-REF/)
-  assert.equal(email.attachments[1].contentType, 'image/svg+xml')
-  assert.match(email.attachments[1].content, /PARNAS HAYOM/)
-  assert.match(email.attachments[1].content, /Our Dear Parents/)
+  assertPdfAttachment(email.attachments[0], /neileich-sponsorship-receipt-.*\.pdf/)
+  assertPdfAttachment(email.attachments[1], /neileich-sponsorship-plaque-.*\.pdf/)
 })
 
 test('finalizeSponsorshipPayment marks paid and emails donor receipt attachments', async () => {
@@ -195,11 +206,11 @@ test('finalizeSponsorshipPayment marks paid and emails donor receipt attachments
   const donorEmail = sent.find((message) => message.template === 'donor_confirmation_with_attachments')
   assert.equal(donorEmail.to, pendingSponsorship.donor_email)
   assert.equal(donorEmail.attachments.length, 2)
-  assert.match(donorEmail.attachments[0].content, /Neileich Sponsorship Receipt/)
-  assert.match(donorEmail.attachments[1].content, /Our Dear Parents/)
+  assertPdfAttachment(donorEmail.attachments[0], /neileich-sponsorship-receipt-.*\.pdf/)
+  assertPdfAttachment(donorEmail.attachments[1], /neileich-sponsorship-plaque-.*\.pdf/)
 
   const staffEmail = sent.find((message) => message.template === 'staff_notification')
-  assert.equal(staffEmail.to, process.env.NOTIFICATION_EMAIL || 'info@neileich.org')
+  assert.deepEqual(staffEmail.to, notificationRecipients())
   assert.match(staffEmail.text, /A new paid sponsorship was received/)
   assert.equal(queries.some((query) => query.text.includes('update sponsorships set payment_provider')), true)
 })
