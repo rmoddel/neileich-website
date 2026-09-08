@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { DEFAULT_EMAIL_FROM, buildDonationConfirmationEmail, buildSponsorshipConfirmationEmail, finalizeDonationPayment, finalizeSponsorshipPayment, resolveEmailFrom, senderDomain } from './parnas.js'
+import { DEFAULT_EMAIL_FROM, buildDonationConfirmationEmail, buildSponsorshipConfirmationEmail, finalizeDonationPayment, finalizeSponsorshipPayment, resolveEmailFrom, senderDomain } from '../../../api/_lib/parnas.js'
 
 const pendingDonation = {
   id: '11111111-1111-4111-8111-111111111111',

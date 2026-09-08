@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createApprovedDonationCheckout } from './checkout.js'
+import { createApprovedDonationCheckout } from '../../../api/donations/checkout.js'
 
 const donation = {
   id: '33333333-3333-4333-8333-333333333333',
