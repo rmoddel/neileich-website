@@ -54,7 +54,7 @@
 .nav-menu { position: relative; }
 
 .programs-menu,
-.donate-options {
+.header-donate-options {
   background: var(--color-background);
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius);
@@ -77,7 +77,7 @@
 .program-group ul { display: grid; gap: var(--spacing-xs); list-style: none; }
 .program-group li { color: var(--color-text-light); font-size: var(--font-size-sm); line-height: 1.35; }
 
-.donate-button {
+.header-donate-button {
   background: var(--color-accent-gold);
   border: 0;
   border-radius: var(--border-radius);
@@ -88,15 +88,164 @@
   padding: var(--spacing-sm) var(--spacing-md);
 }
 
-.donate-button:hover,
-.donate-button:focus-visible { background: #e6b85c; }
-.donate-options { display: grid; gap: var(--spacing-xs); min-width: 210px; padding: var(--spacing-sm); }
-.donate-options a { border-radius: 5px; padding: var(--spacing-sm) var(--spacing-md); white-space: nowrap; }
-.donate-options a:hover,
-.donate-options a:focus-visible { background: var(--color-surface); }
-.donor-fund-option { border-top: 1px solid var(--color-border); margin-top: var(--spacing-xs); padding-top: var(--spacing-xs); }
-.donor-fund-option p { color: var(--color-text-light); font-size: .78rem; line-height: 1.4; margin: 0; padding: var(--spacing-xs) var(--spacing-md) var(--spacing-sm); white-space: normal; }
-.donor-fund-option strong { color: var(--color-text); }
+.header-donate-button:hover,
+.header-donate-button:focus-visible { background: #e6b85c; }
+
+.header-donate-options {
+  display: grid;
+  gap: .5rem;
+  padding: .75rem;
+  width: min(430px, calc(100vw - 2rem));
+}
+
+.header-donate-option {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #e6ebf1;
+  border-radius: 8px;
+  color: #22324a;
+  display: grid;
+  font-weight: 700;
+  gap: .85rem;
+  grid-template-columns: 112px 1fr;
+  min-height: 64px;
+  padding: .65rem .85rem;
+  text-decoration: none;
+}
+
+.header-donate-option:hover,
+.header-donate-option:focus-visible {
+  background: var(--color-surface);
+  color: #22324a;
+}
+
+.header-donate-mark {
+  align-items: center;
+  background: #eef4f8;
+  border: 1px solid #dfe8ef;
+  border-radius: 8px;
+  color: #173e48;
+  display: flex;
+  font-size: .72rem;
+  font-weight: 800;
+  height: 44px;
+  justify-content: center;
+  letter-spacing: .05em;
+  overflow: hidden;
+  padding: .35rem .5rem;
+  width: 112px;
+}
+
+.header-donate-mark img {
+  display: block;
+  height: auto;
+  max-width: none;
+  object-fit: contain;
+}
+
+.header-donate-mark-sola {
+  background: #f5f8ff;
+  border-color: #dbe6ff;
+}
+
+.header-donate-mark-sola img {
+  width: 86px;
+}
+
+.header-donate-copy {
+  display: grid;
+  gap: .1rem;
+  min-width: 0;
+}
+
+.header-donate-title {
+  color: #22324a;
+  font-size: .98rem;
+  line-height: 1.28;
+}
+
+.header-daf-section {
+  background: #f7f9fc;
+  border: 1px solid #edf1f5;
+  border-radius: 8px;
+  display: grid;
+  gap: .65rem;
+  padding: .85rem;
+}
+
+.header-daf-heading {
+  color: #22324a;
+  font-size: .98rem;
+  font-weight: 700;
+  line-height: 1.28;
+  margin: 0;
+}
+
+.header-daf-icons {
+  display: grid;
+  gap: .65rem;
+  grid-template-columns: 1fr 1fr;
+}
+
+.header-daf-icon {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #dfe6ee;
+  border-radius: 8px;
+  display: flex;
+  height: 56px;
+  justify-content: center;
+  padding: .55rem;
+}
+
+.header-daf-icon:hover,
+.header-daf-icon:focus-visible {
+  background: var(--color-background);
+  border-color: #cdd9e5;
+}
+
+.header-daf-icon img {
+  display: block;
+  max-width: none;
+  object-fit: contain;
+}
+
+.header-daf-icon-donors-fund {
+  background: #22324a;
+  border-color: #34445d;
+}
+
+.header-daf-icon-donors-fund:hover,
+.header-daf-icon-donors-fund:focus-visible {
+  background: #2c3b53;
+  border-color: #41536d;
+}
+
+.header-daf-icon-donors-fund img {
+  width: 118px;
+}
+
+.header-daf-icon-ojc {
+  background: #f5f8ff;
+  border-color: #dbe6ff;
+}
+
+.header-daf-icon-ojc img {
+  width: 64px;
+}
+
+.header-donate-note {
+  border-top: 1px solid #dfe6ee;
+  color: #66758a;
+  font-size: .9rem;
+  line-height: 1.5;
+  margin: .25rem 0 0;
+  padding: .85rem .85rem .1rem;
+}
+
+.header-donate-note strong {
+  color: #22324a;
+}
 
 @media (max-width: 1000px) { .nav { gap: var(--spacing-md); } }
 
@@ -127,4 +276,35 @@
   }
 
   .programs-nav { position: static; }
+
+  .donate-menu { position: static; }
+
+  .header-donate-options {
+    left: 1rem;
+    margin-top: var(--spacing-sm);
+    max-height: calc(100vh - 9rem);
+    overflow-y: auto;
+    position: fixed;
+    right: 1rem;
+    top: auto;
+    width: auto;
+  }
+
+  .header-donate-option {
+    grid-template-columns: 96px 1fr;
+    min-height: auto;
+  }
+
+  .header-donate-mark {
+    height: 42px;
+    width: 96px;
+  }
+
+  .header-donate-mark-sola img {
+    width: 76px;
+  }
+
+  .header-daf-icon-donors-fund img {
+    width: 104px;
+  }
 }

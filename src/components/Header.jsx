@@ -19,16 +19,36 @@ function Header() {
           <Link to="/parnas-hayom" onClick={() => setOpenMenu(null)}>Parnas Hayom</Link>
           <Link to="/contact" onClick={() => setOpenMenu(null)}>Contact</Link>
           <div className="nav-menu donate-menu">
-            <button type="button" className="donate-button" aria-expanded={openMenu === 'donate'} aria-controls="donate-menu" onClick={() => toggleMenu('donate')}>
+            <button type="button" className="header-donate-button" aria-expanded={openMenu === 'donate'} aria-controls="donate-menu" onClick={() => toggleMenu('donate')}>
               Donate Now
             </button>
             {openMenu === 'donate' && (
-              <div id="donate-menu" className="donate-options" role="region" aria-label="Donation options">
-                <a href="https://secure.cardknox.com/neileich" target="_blank" rel="noreferrer">Donate Credit Card or ACH</a>
-                <div className="donor-fund-option">
-                  <a href="https://thedonorsfund.org/donate/NEILECH-p7711855057422424/264527675" target="_blank" rel="noreferrer">Donate with Donors Fund</a>
-                  <p>To donate from the donor fund portal, search Tax ID <strong>26-4527675</strong> and choose <strong>Neileich</strong>.</p>
-                </div>
+              <div id="donate-menu" className="header-donate-options" role="region" aria-label="Donation options">
+                <a className="header-donate-option" href="https://secure.cardknox.com/neileich" target="_blank" rel="noreferrer">
+                  <span className="header-donate-mark header-donate-mark-sola" aria-hidden="true">
+                    <img src="/sola.svg" alt="" />
+                  </span>
+                  <span className="header-donate-copy">
+                    <span className="header-donate-title">Donate by Credit Card</span>
+                  </span>
+                </a>
+
+                <section className="header-daf-section" aria-labelledby="header-daf-heading">
+                  <p id="header-daf-heading" className="header-daf-heading">Donate through your DAF</p>
+                  <div className="header-daf-icons">
+                    <a className="header-daf-icon header-daf-icon-donors-fund" href="https://thedonorsfund.org/donate/NEILECH-p7711855057422424/264527675" target="_blank" rel="noreferrer" aria-label="Donate through The Donors Fund">
+                      <img src="/thedonorsfund.svg" alt="" />
+                    </a>
+
+                    <a className="header-daf-icon header-daf-icon-ojc" href="https://secure.ojccardpaymentsite.org/MQAAADYAAAAxAAAANAAAADgAAAA=" target="_blank" rel="noreferrer" aria-label="Donate through OJC">
+                      <img src="https://secure.ojccardpaymentsite.org/images/logo.svg" alt="" />
+                    </a>
+                  </div>
+                </section>
+
+                <p className="header-donate-note">
+                  Donating through another DAF? Search for Tax ID <strong>26-4527675</strong> and select <strong>Neileich</strong>.
+                </p>
               </div>
             )}
           </div>
