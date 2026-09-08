@@ -1,0 +1,24 @@
+{
+  "name": "Neileich Lakewood Commons",
+  "short_name": "Neileich",
+  "description": "Building belonging. Thriving children. Strong Kehila.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#102d36",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo-english.png",
+      "sizes": "2170x1009",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

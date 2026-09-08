@@ -8,6 +8,7 @@
     "dev:full": "vercel dev --listen 5173",
     "build": "vite build",
     "lint": "eslint .",
+    "test": "node --test",
     "preview": "vite preview"
   },
   "dependencies": {

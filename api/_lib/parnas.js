@@ -25,12 +25,98 @@ export function validCheckout(body) {
   return null
 }
 
-export async function sendEmail({ to, subject, text, sponsorshipId, donationId, template }) {
+const DONATION_EIN = '26-4527675'
+
+function donationMoney(cents, currency = 'usd') {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency.toUpperCase() }).format(cents / 100)
+}
+
+function donationDate(value) {
+  return new Intl.DateTimeFormat('en-US', { dateStyle: 'long', timeZone: TIMEZONE }).format(value ? new Date(value) : new Date())
+}
+
+function escapeMarkup(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char])
+}
+
+function clippedText(value, maxLength) {
+  const text = String(value || '').trim()
+  return text.length > maxLength ? `${text.slice(0, maxLength - 3)}...` : text
+}
+
+export function buildDonationReceiptText(donation, reference = donation.payment_reference) {
+  const amount = donationMoney(donation.amount_cents, donation.currency)
+  const date = donationDate(donation.created_at)
+  return [
+    'Neileich Donation Receipt',
+    '',
+    'Thank you for your donation to Neileich.',
+    '',
+    `Receipt ID: ${donation.id}`,
+    `Date: ${date}`,
+    `Donor: ${donation.donor_name}`,
+    `Email: ${donation.donor_email}`,
+    donation.donor_phone ? `Phone: ${donation.donor_phone}` : null,
+    `Amount: ${amount}`,
+    `Payment reference: ${reference || 'Unavailable'}`,
+    '',
+    'Neileich is a project of Bais Medrash of Lakewood Commons, a registered 501(c)(3) organization.',
+    `EIN: ${DONATION_EIN}`,
+  ].filter(Boolean).join('\n')
+}
+
+export function buildDonationPlaqueSvg(donation) {
+  const donorName = escapeMarkup(clippedText(donation.donor_name, 42))
+  const amount = escapeMarkup(donationMoney(donation.amount_cents, donation.currency))
+  const date = escapeMarkup(donationDate(donation.created_at))
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+  <rect width="1200" height="800" fill="#102d36"/>
+  <rect x="64" y="64" width="1072" height="672" rx="28" fill="none" stroke="#e7c77e" stroke-width="6"/>
+  <rect x="95" y="95" width="1010" height="610" rx="18" fill="none" stroke="#d9e6e2" stroke-opacity=".28" stroke-width="2"/>
+  <text x="600" y="166" text-anchor="middle" fill="#e7c77e" font-family="Georgia, serif" font-size="74">Neileich</text>
+  <text x="600" y="234" text-anchor="middle" fill="#d9e6e2" font-family="Arial, sans-serif" font-size="26" letter-spacing="4">BUILDING BELONGING</text>
+  <line x1="250" y1="304" x2="950" y2="304" stroke="#d9e6e2" stroke-opacity=".35" stroke-width="2"/>
+  <text x="600" y="388" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="40">Thank you for your donation</text>
+  <text x="600" y="474" text-anchor="middle" fill="#fff7e3" font-family="Georgia, serif" font-size="62">${donorName}</text>
+  <text x="600" y="558" text-anchor="middle" fill="#e7c77e" font-family="Arial, sans-serif" font-size="34">${amount}</text>
+  <text x="600" y="620" text-anchor="middle" fill="#d9e6e2" font-family="Arial, sans-serif" font-size="26">${date}</text>
+  <text x="600" y="680" text-anchor="middle" fill="#d9e6e2" fill-opacity=".86" font-family="Arial, sans-serif" font-size="24">Your support helps children and families thrive.</text>
+</svg>`
+}
+
+export function buildDonationConfirmationEmail(donation, reference = donation.payment_reference) {
+  const amount = donationMoney(donation.amount_cents, donation.currency)
+  const date = donationDate(donation.created_at)
+  const shortId = String(donation.id).slice(0, 8)
+  const receiptText = buildDonationReceiptText(donation, reference)
+  const plaqueSvg = buildDonationPlaqueSvg(donation)
+  const text = `Thank you, ${donation.donor_name}.\n\nYour donation to Neileich has been received.\n\nAmount: ${amount}\nDate: ${date}\nPayment reference: ${reference || 'Unavailable'}\n\nYour receipt and donation plaque are attached.`
+  const html = `<p>Thank you, ${escapeMarkup(donation.donor_name)}.</p><p>Your donation to Neileich has been received.</p><p><strong>Amount:</strong> ${escapeMarkup(amount)}<br><strong>Date:</strong> ${escapeMarkup(date)}<br><strong>Payment reference:</strong> ${escapeMarkup(reference || 'Unavailable')}</p><p>Your receipt and donation plaque are attached.</p>`
+  return {
+    subject: 'Thank you for your Neileich donation',
+    text,
+    html,
+    attachments: [
+      { filename: `neileich-donation-receipt-${shortId}.txt`, content: receiptText, contentType: 'text/plain' },
+      { filename: `neileich-donation-plaque-${shortId}.svg`, content: plaqueSvg, contentType: 'image/svg+xml' },
+    ],
+  }
+}
+
+export function buildDonationStaffNotificationEmail(donation, reference = donation.payment_reference) {
+  const facts = `Amount paid: ${donationMoney(donation.amount_cents, donation.currency)}\nPayment reference: ${reference || 'Unavailable'}`
+  return {
+    subject: 'New Neileich donation',
+    text: `A new paid donation was received.\n\nDonor: ${donation.donor_name}\nEmail: ${donation.donor_email}\nPhone: ${donation.donor_phone || '-'}\n${facts}`,
+  }
+}
+
+export async function sendEmail({ to, subject, text, html, attachments, sponsorshipId, donationId, template }) {
   const sql = db()
   try {
     if (!process.env.RESEND_API_KEY || !process.env.EMAIL_FROM) throw new Error('Email provider is not configured')
     const { Resend } = await import('resend')
-    const result = await new Resend(process.env.RESEND_API_KEY).emails.send({ from: process.env.EMAIL_FROM, to, subject, text })
+    const result = await new Resend(process.env.RESEND_API_KEY).emails.send({ from: process.env.EMAIL_FROM, to, subject, text, html, attachments })
     if (result.error) throw new Error(result.error.message || 'Email provider rejected the message')
     if (donationId) {
       await sql`insert into email_events (sponsorship_id, donation_id, recipient, template, status, provider_message_id, sent_at) values (${sponsorshipId || null}, ${donationId}, ${to}, ${template}, 'sent', ${result.data?.id || null}, now())`
@@ -45,6 +131,26 @@ export async function sendEmail({ to, subject, text, sponsorshipId, donationId, 
     }
     console.error('Parnas Hayom email failed', error)
   }
+}
+
+export async function finalizeDonationPayment({ donationId, reference, sql = db(), sendEmailFn = sendEmail }) {
+  const rows = await sql`select * from donations where id = ${donationId}::uuid limit 1`
+  const donation = rows[0]
+  if (!donation) throw new Error(`No donation found for Sola reference ${reference}`)
+  if (donation.status === 'confirmed' && donation.payment_status === 'paid') return { finalized: false, donation }
+
+  const updated = await sql`update donations set payment_provider = 'sola', payment_status = 'paid', payment_reference = ${reference}, status = 'confirmed', updated_at = now() where id = ${donation.id}::uuid and status = 'pending_payment' returning *`
+  const finalizedDonation = updated[0]
+  if (!finalizedDonation) return { finalized: false, donation }
+
+  await sql`insert into payment_events(provider_event_id, donation_id, event_type) values (${`sola:${reference}`}, ${finalizedDonation.id}::uuid, 'sola.donation.approved') on conflict (provider_event_id) do nothing`
+  const donorEmail = buildDonationConfirmationEmail(finalizedDonation, reference)
+  const staffEmail = buildDonationStaffNotificationEmail(finalizedDonation, reference)
+  await Promise.all([
+    sendEmailFn({ to: finalizedDonation.donor_email, ...donorEmail, donationId: finalizedDonation.id, template: 'donor_donation_confirmation' }),
+    sendEmailFn({ to: process.env.NOTIFICATION_EMAIL || 'info@neileich.org', ...staffEmail, donationId: finalizedDonation.id, template: 'staff_donation_notification' }),
+  ])
+  return { finalized: true, donation: finalizedDonation }
 }
 
 export async function finalizeSponsorshipPayment({ sponsorshipId, reference }) {

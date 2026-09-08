@@ -1,6 +1,7 @@
 import { Routes, Route } from 'react-router-dom'
 import Header from './components/Header'
 import Footer from './components/Footer'
+import RouteMeta from './components/RouteMeta'
 import Home from './pages/Home'
 import About from './pages/About'
 import Contact from './pages/Contact'
@@ -14,6 +15,7 @@ import './App.css'
 function App() {
   return (
     <div className="app">
+      <RouteMeta />
       <Header />
       <main>
         <Routes>
