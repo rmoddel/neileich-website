@@ -648,8 +648,9 @@ export default function ParnasHayom() {
           </section>
           <div className="ph-preview" ref={previewRef}>
             <div className="ph-preview-brand">
+              <span className="ph-preview-kicker">Parnas Hayom</span>
               <img src="/logo-english.png" alt="Neileich" />
-              <span>Building Belonging. Thriving children. Strong Kehila.</span>
+              <span className="ph-preview-tagline">Building Belonging. Thriving children. Strong Kehila.</span>
             </div>
             <div className="ph-preview-dedication">
               <p>{previewLeadIn}</p>
@@ -660,6 +661,7 @@ export default function ParnasHayom() {
                   4,
                 )}`}
                 lang="he"
+                dir="auto"
               >
                 {form.dedicationText || "Your dedication will appear here"}
               </b>
