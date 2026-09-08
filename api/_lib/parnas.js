@@ -237,9 +237,11 @@ export async function sendEmail({ to, subject, text, html, attachments, sponsors
     const result = await new Resend(process.env.RESEND_API_KEY).emails.send({ from: process.env.EMAIL_FROM, to, subject, text, html, attachments })
     if (result.error) throw new Error(result.error.message || 'Email provider rejected the message')
     await recordEmailEvent(sql, { to, template, sponsorshipId, donationId, status: 'sent', providerMessageId: result.data?.id || null })
+    return { ok: true, providerMessageId: result.data?.id || null }
   } catch (error) {
     await recordEmailEvent(sql, { to, template, sponsorshipId, donationId, status: 'failed', error })
     console.error('Parnas Hayom email failed', error)
+    return { ok: false, error: error.message || 'Email failed' }
   }
 }
 
@@ -270,7 +272,7 @@ async function sendDonationConfirmationMessages({ donation, reference, sql, send
   if (!shouldSendDonor && !shouldSendStaff) return false
   const donorEmail = buildDonationConfirmationEmail(donation, reference)
   const staffEmail = buildDonationStaffNotificationEmail(donation, reference)
-  await Promise.all([
+  const results = await Promise.all([
     shouldSendDonor
       ? sendEmailFn({ to: donation.donor_email, ...donorEmail, donationId: donation.id, template: 'donor_donation_confirmation' })
       : null,
@@ -278,7 +280,7 @@ async function sendDonationConfirmationMessages({ donation, reference, sql, send
       ? sendEmailFn({ to: process.env.NOTIFICATION_EMAIL || 'info@neileich.org', ...staffEmail, donationId: donation.id, template: 'staff_donation_notification' })
       : null,
   ].filter(Boolean))
-  return true
+  return results.every((result) => result?.ok !== false)
 }
 
 async function sendSponsorshipConfirmationMessages({ sponsorship, reference, sql, sendEmailFn, checkExisting = false }) {
@@ -288,7 +290,7 @@ async function sendSponsorshipConfirmationMessages({ sponsorship, reference, sql
   if (!shouldSendDonor && !shouldSendStaff) return false
   const donorEmail = buildSponsorshipConfirmationEmail(sponsorship, reference)
   const staffEmail = buildSponsorshipStaffNotificationEmail(sponsorship, reference)
-  await Promise.all([
+  const results = await Promise.all([
     shouldSendDonor
       ? sendEmailFn({ to: sponsorship.donor_email, ...donorEmail, sponsorshipId: sponsorship.id, template: 'donor_confirmation_with_attachments' })
       : null,
@@ -296,7 +298,7 @@ async function sendSponsorshipConfirmationMessages({ sponsorship, reference, sql
       ? sendEmailFn({ to: process.env.NOTIFICATION_EMAIL || 'info@neileich.org', ...staffEmail, sponsorshipId: sponsorship.id, template: 'staff_notification' })
       : null,
   ].filter(Boolean))
-  return true
+  return results.every((result) => result?.ok !== false)
 }
 
 export async function finalizeDonationPayment({ donationId, reference, sql = db(), sendEmailFn = sendEmail }) {
@@ -321,8 +323,8 @@ export async function finalizeDonationPayment({ donationId, reference, sql = db(
   } catch (error) {
     console.error('Donation payment event logging failed', error)
   }
-  await sendDonationConfirmationMessages({ donation: finalizedDonation, reference, sql, sendEmailFn })
-  return { finalized: true, emailed: true, donation: finalizedDonation }
+  const emailed = await sendDonationConfirmationMessages({ donation: finalizedDonation, reference, sql, sendEmailFn })
+  return { finalized: true, emailed, donation: finalizedDonation }
 }
 
 export async function finalizeSponsorshipPayment({ sponsorshipId, reference, sql = db(), sendEmailFn = sendEmail }) {

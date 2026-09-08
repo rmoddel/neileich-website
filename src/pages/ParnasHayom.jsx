@@ -257,7 +257,16 @@ export default function ParnasHayom() {
   const downloadFlyer = useCallback(async () => {
     if (!previewRef.current) return;
     const [{ default: html2canvas }, { jsPDF }] = await loadFlyerLibraries();
-    const canvas = await html2canvas(previewRef.current, { backgroundColor: null, scale: 2, useCORS: true });
+    const canvas = await html2canvas(previewRef.current, {
+      backgroundColor: null,
+      scale: 2,
+      useCORS: true,
+      windowHeight: 1600,
+      windowWidth: 1200,
+      onclone: (documentClone) => {
+        documentClone.documentElement.classList.add("ph-exporting");
+      },
+    });
     const pdf = new jsPDF({ orientation: "portrait", unit: "in", format: "letter" });
     pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, 8.5, 11);
     pdf.save(`neileich-dedication-${selectedDate ? dateKey(selectedDate) : "flyer"}.pdf`);
@@ -378,11 +387,64 @@ export default function ParnasHayom() {
         let contentScale = 1;
         preview.style.setProperty("--flyer-content-scale", "1");
 
-        for (let i = 0; i < 4; i += 1) {
-          const overflowRatio = Math.max(
+        const measureOverflow = () => {
+          const previewBox = preview.getBoundingClientRect();
+          const sections = [
+            ".ph-preview-brand",
+            ".ph-preview-dedication",
+            ".ph-preview-details",
+          ]
+            .map((selector) => preview.querySelector(selector))
+            .filter(Boolean);
+          let overflowRatio = Math.max(
             preview.scrollWidth / Math.max(preview.clientWidth, 1),
             preview.scrollHeight / Math.max(preview.clientHeight, 1),
           );
+          let previousBottom = previewBox.top;
+
+          sections.forEach((section) => {
+            const sectionBox = section.getBoundingClientRect();
+            const childBoxes = Array.from(section.children)
+              .map((child) => child.getBoundingClientRect())
+              .filter((box) => box.width || box.height);
+
+            if (!childBoxes.length) return;
+
+            const contentBox = childBoxes.reduce(
+              (box, childBox) => ({
+                top: Math.min(box.top, childBox.top),
+                right: Math.max(box.right, childBox.right),
+                bottom: Math.max(box.bottom, childBox.bottom),
+                left: Math.min(box.left, childBox.left),
+              }),
+              childBoxes[0],
+            );
+            const verticalOverflow =
+              Math.max(0, sectionBox.top - contentBox.top) +
+              Math.max(0, contentBox.bottom - sectionBox.bottom) +
+              Math.max(0, previousBottom - contentBox.top);
+            const horizontalOverflow =
+              Math.max(0, sectionBox.left - contentBox.left) +
+              Math.max(0, contentBox.right - sectionBox.right);
+
+            overflowRatio = Math.max(
+              overflowRatio,
+              1 + verticalOverflow / Math.max(sectionBox.height, 1),
+              1 + horizontalOverflow / Math.max(sectionBox.width, 1),
+            );
+            previousBottom = Math.max(previousBottom, contentBox.bottom);
+          });
+
+          return Math.max(
+            overflowRatio,
+            1 +
+              Math.max(0, previousBottom - previewBox.bottom) /
+                Math.max(previewBox.height, 1),
+          );
+        };
+
+        for (let i = 0; i < 6; i += 1) {
+          const overflowRatio = measureOverflow();
 
           if (overflowRatio <= 1.01) break;
           contentScale = Math.max(0.2, contentScale / overflowRatio);
@@ -418,13 +480,14 @@ export default function ParnasHayom() {
   const receiptHebrewDate = receipt?.gregorianDate
     ? hebrew(new Date(`${receipt.gregorianDate}T12:00:00`)).renderGematriya(true)
     : "";
+  const receiptEmailFailed = receipt?.emailStatus === "failed";
   if (paymentStatus === "confirmed") return (
     <div className="ph-success-page">
       <div className="ph-success-card">
         <img src="/logo-english.png" alt="Neileich" />
         <p className="ph-success-kicker">SPONSORSHIP CONFIRMED</p>
         <h1>Thank you for supporting Neileich.</h1>
-        <p>{confirmationPreview ? "This is a local preview of the confirmed-payment screen. No payment was made." : flyerDownloadError ? "Your payment is confirmed and a receipt is on its way by email. Your flyer could not download automatically; please use the Print flyer button before leaving this page next time." : "Your payment is confirmed. Your dedication flyer has been downloaded and a receipt is on its way by email."}</p>
+        <p>{confirmationPreview ? "This is a local preview of the confirmed-payment screen. No payment was made." : receiptEmailFailed ? "Your payment is confirmed, but the receipt and plaque email could not be sent automatically. Please contact Neileich so we can resend it." : flyerDownloadError ? "Your payment is confirmed and a receipt is on its way by email. Your flyer could not download automatically; please use the Print flyer button before leaving this page next time." : "Your payment is confirmed. Your dedication flyer has been downloaded and a receipt is on its way by email."}</p>
         {receipt && (
           <section className="ph-receipt" aria-label="Sponsorship receipt">
             <h2>Your sponsorship receipt</h2>

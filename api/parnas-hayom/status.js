@@ -17,9 +17,18 @@ export default async function handler(req, res) {
       rows = await sql`select s.id, s.status, s.payment_status, s.payment_reference, s.donor_name, s.donor_email, s.donor_phone, s.dedication_type, s.dedication_text, s.anonymous, s.gregorian_date::text as gregorian_date, s.hebrew_year, s.hebrew_month, s.hebrew_day, s.amount_cents, s.currency, s.recurring, t.name as sponsorship_name from sponsorships s join sponsorship_types t on t.id = s.sponsorship_type_id where s.id = ${sponsorshipId}::uuid and s.receipt_token = ${receiptToken}::uuid`
     }
     const sponsorship = rows[0]
+    let donorEmailStatus = { status: 'not_attempted', error: null }
+    try {
+      const emailRows = await sql`select status, error from email_events where sponsorship_id = ${sponsorship.id}::uuid and recipient = ${sponsorship.donor_email} and template = 'donor_confirmation_with_attachments' order by sent_at desc nulls last, id desc limit 1`
+      if (emailRows[0]) donorEmailStatus = { status: emailRows[0].status, error: emailRows[0].error || null }
+    } catch (error) {
+      console.error('Sponsorship email status lookup failed', error)
+    }
     return res.status(200).json({
       status: sponsorship.status,
       paymentStatus: sponsorship.payment_status,
+      emailStatus: donorEmailStatus.status,
+      emailError: donorEmailStatus.error,
       receipt: {
         sponsorshipName: sponsorship.sponsorship_name,
         donorName: sponsorship.donor_name,
@@ -36,6 +45,8 @@ export default async function handler(req, res) {
         currency: sponsorship.currency,
         recurring: sponsorship.recurring,
         paymentReference: sponsorship.payment_reference,
+        emailStatus: donorEmailStatus.status,
+        emailError: donorEmailStatus.error,
       },
     })
   } catch (error) { console.error('Sponsorship status lookup failed', error); return badRequest(res, 'Status is temporarily unavailable.', 503) }
