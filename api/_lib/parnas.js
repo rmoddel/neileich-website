@@ -26,6 +26,23 @@ export function validCheckout(body) {
 }
 
 const DONATION_EIN = '26-4527675'
+export const DEFAULT_EMAIL_FROM = 'Neileich <receipts@neileich.org>'
+export const VERIFIED_EMAIL_DOMAIN = 'neileich.org'
+
+export function senderDomain(value) {
+  const text = String(value || '').trim()
+  const email = text.match(/<([^<>\s]+@[^<>\s]+)>/)?.[1] || text
+  return email.match(/^[^@\s<>]+@([^@\s<>]+)$/)?.[1]?.toLowerCase() || null
+}
+
+export function resolveEmailFrom() {
+  const configured = String(process.env.EMAIL_FROM || '').trim()
+  if (!configured) return DEFAULT_EMAIL_FROM
+  const domain = senderDomain(configured)
+  if (domain === VERIFIED_EMAIL_DOMAIN) return configured
+  console.warn('EMAIL_FROM is not using the verified neileich.org sender domain; falling back to the default receipt sender.', { configuredDomain: domain || 'invalid' })
+  return DEFAULT_EMAIL_FROM
+}
 
 function donationMoney(cents, currency = 'usd') {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency.toUpperCase() }).format(cents / 100)
@@ -226,21 +243,22 @@ async function recordEmailEvent(sql, { to, template, sponsorshipId, donationId, 
 
 export async function sendEmail({ to, subject, text, html, attachments, sponsorshipId, donationId, template }) {
   let sql = null
+  const from = resolveEmailFrom()
   try {
     sql = db()
   } catch (error) {
     console.error('Email event database unavailable', error)
   }
   try {
-    if (!process.env.RESEND_API_KEY || !process.env.EMAIL_FROM) throw new Error('Email provider is not configured')
+    if (!process.env.RESEND_API_KEY) throw new Error('Email provider is not configured')
     const { Resend } = await import('resend')
-    const result = await new Resend(process.env.RESEND_API_KEY).emails.send({ from: process.env.EMAIL_FROM, to, subject, text, html, attachments })
+    const result = await new Resend(process.env.RESEND_API_KEY).emails.send({ from, to, subject, text, html, attachments })
     if (result.error) throw new Error(result.error.message || 'Email provider rejected the message')
     await recordEmailEvent(sql, { to, template, sponsorshipId, donationId, status: 'sent', providerMessageId: result.data?.id || null })
     return { ok: true, providerMessageId: result.data?.id || null }
   } catch (error) {
     await recordEmailEvent(sql, { to, template, sponsorshipId, donationId, status: 'failed', error })
-    console.error('Parnas Hayom email failed', error)
+    console.error('Parnas Hayom email failed', { error, template, senderDomain: senderDomain(from) })
     return { ok: false, error: error.message || 'Email failed' }
   }
 }

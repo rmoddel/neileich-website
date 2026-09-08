@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { buildDonationConfirmationEmail, buildSponsorshipConfirmationEmail, finalizeDonationPayment, finalizeSponsorshipPayment } from './parnas.js'
+import { DEFAULT_EMAIL_FROM, buildDonationConfirmationEmail, buildSponsorshipConfirmationEmail, finalizeDonationPayment, finalizeSponsorshipPayment, resolveEmailFrom, senderDomain } from './parnas.js'
 
 const pendingDonation = {
   id: '11111111-1111-4111-8111-111111111111',
@@ -89,6 +89,32 @@ test('buildDonationConfirmationEmail includes receipt and plaque attachments', (
   assert.equal(email.attachments[1].contentType, 'image/svg+xml')
   assert.match(email.attachments[1].content, /Thank you for your donation/)
   assert.match(email.attachments[1].content, /Test Donor/)
+})
+
+test('resolveEmailFrom keeps a neileich.org sender', () => {
+  const original = process.env.EMAIL_FROM
+  try {
+    process.env.EMAIL_FROM = 'Neileich Receipts <info@neileich.org>'
+    assert.equal(resolveEmailFrom(), 'Neileich Receipts <info@neileich.org>')
+    assert.equal(senderDomain(process.env.EMAIL_FROM), 'neileich.org')
+  } finally {
+    if (original === undefined) delete process.env.EMAIL_FROM
+    else process.env.EMAIL_FROM = original
+  }
+})
+
+test('resolveEmailFrom falls back when EMAIL_FROM uses another domain', () => {
+  const original = process.env.EMAIL_FROM
+  const originalWarn = console.warn
+  try {
+    console.warn = () => {}
+    process.env.EMAIL_FROM = 'Old Sender <receipts@example.com>'
+    assert.equal(resolveEmailFrom(), DEFAULT_EMAIL_FROM)
+  } finally {
+    console.warn = originalWarn
+    if (original === undefined) delete process.env.EMAIL_FROM
+    else process.env.EMAIL_FROM = original
+  }
 })
 
 test('finalizeDonationPayment marks the donation paid and emails donor attachments once', async () => {
