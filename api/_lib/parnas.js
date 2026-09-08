@@ -193,16 +193,33 @@ function buildReceiptPdf(title, body) {
   return pdf
 }
 
-function fitLines(pdf, text, maxWidth, maxHeight, initialSize, minSize = 15) {
+function fitLines(pdf, text, maxWidth, maxHeight, initialSize, minSize = 5, lineHeightFactor = 1.12) {
   let size = initialSize
   let lines = []
+  let lineHeight = size * lineHeightFactor
+  let textHeight = lineHeight
+  let maxLineWidth = 0
+
   do {
     pdf.setFontSize(size)
     lines = pdf.splitTextToSize(String(text || ''), maxWidth)
-    if (lines.length * size * 1.18 <= maxHeight || size <= minSize) break
-    size -= 2
+    lineHeight = size * lineHeightFactor
+    textHeight = Math.max(size, lines.length * lineHeight)
+    maxLineWidth = Math.max(...lines.map((line) => pdf.getTextWidth(line)), 0)
+    if ((textHeight <= maxHeight && maxLineWidth <= maxWidth) || size <= minSize) break
+    size -= size > 14 ? 1 : 0.5
   } while (size > minSize)
-  return { size, lines, lineHeight: size * 1.18 }
+
+  while ((textHeight > maxHeight || maxLineWidth > maxWidth) && size > 3) {
+    size -= 0.25
+    pdf.setFontSize(size)
+    lines = pdf.splitTextToSize(String(text || ''), maxWidth)
+    lineHeight = size * lineHeightFactor
+    textHeight = Math.max(size, lines.length * lineHeight)
+    maxLineWidth = Math.max(...lines.map((line) => pdf.getTextWidth(line)), 0)
+  }
+
+  return { size, lines, lineHeight, textHeight }
 }
 
 function drawPlaqueFrame(pdf, width, height) {
@@ -218,10 +235,10 @@ function drawPlaqueFrame(pdf, width, height) {
 
 function drawCenteredText(pdf, text, x, y, maxWidth, maxHeight, size, options = {}) {
   pdf.setR2L(Boolean(options.rtl))
-  const fitted = fitLines(pdf, text, maxWidth, maxHeight, size, options.minSize)
+  const fitted = fitLines(pdf, text, maxWidth, maxHeight, size, options.minSize, options.lineHeightFactor)
   pdf.setFontSize(fitted.size)
   const top = y - ((fitted.lines.length - 1) * fitted.lineHeight) / 2
-  pdf.text(fitted.lines, x, top, { align: 'center' })
+  pdf.text(fitted.lines, x, top, { align: 'center', lineHeightFactor: options.lineHeightFactor || 1.12 })
   pdf.setR2L(false)
 }
 
@@ -444,17 +461,17 @@ export function buildSponsorshipPlaquePdf(sponsorship) {
   pdf.setTextColor(217, 230, 226)
   pdf.setFontSize(18)
   pdf.setFont('helvetica', 'normal')
-  drawCenteredText(pdf, sponsorshipLeadIn(sponsorship.sponsorship_name), 306, 348, 440, 52, 18)
+  drawCenteredText(pdf, sponsorshipLeadIn(sponsorship.sponsorship_name), 306, 348, 440, 52, 18, { minSize: 5 })
   pdf.setTextColor(231, 199, 126)
   pdf.setFontSize(24)
   dedicationTypeParts(sponsorship.dedication_type).forEach((part, index, parts) => {
     const y = parts.length > 1 ? 392 + index * 26 : 404
     setPdfFontForText(pdf, part, 'bold')
-    drawCenteredText(pdf, clippedText(part, 68), 306, y, 460, 28, 22, { minSize: 15, rtl: HEBREW_RE.test(part) })
+    drawCenteredText(pdf, part, 306, y, 460, 28, 22, { minSize: 5, rtl: HEBREW_RE.test(part) })
   })
   pdf.setTextColor(255, 247, 227)
   setPdfFontForText(pdf, sponsorship.dedication_text, 'normal', 'times')
-  drawCenteredText(pdf, clippedText(sponsorship.dedication_text, 130), 306, 500, 470, 120, 46, { minSize: 18, rtl: pdfUsesRtl(sponsorship.dedication_text) })
+  drawCenteredText(pdf, sponsorship.dedication_text, 306, 500, 470, 120, 46, { minSize: 4, rtl: pdfUsesRtl(sponsorship.dedication_text) })
   pdf.setFont('helvetica', 'bold')
   pdf.setDrawColor(217, 230, 226)
   pdf.setLineWidth(1)
@@ -476,10 +493,10 @@ export function buildSponsorshipPlaquePdf(sponsorship) {
     pdf.setFont('helvetica', 'bold')
     drawCenteredText(pdf, 'Sponsored by', 306, 712, 440, 24, 15, { minSize: 12 })
     pdf.setFont(PDF_FONT_NAME, 'bold')
-    drawCenteredText(pdf, sponsorshipPublicName(sponsorship), 306, 734, 440, 32, 18, { minSize: 12, rtl: true })
+    drawCenteredText(pdf, sponsorshipPublicName(sponsorship), 306, 734, 440, 32, 18, { minSize: 5, rtl: true })
   } else {
     pdf.setFont('helvetica', 'bold')
-    drawCenteredText(pdf, `Sponsored by ${sponsorshipPublicName(sponsorship)}`, 306, 724, 440, 38, 18, { minSize: 12 })
+    drawCenteredText(pdf, `Sponsored by ${sponsorshipPublicName(sponsorship)}`, 306, 724, 440, 38, 18, { minSize: 5 })
   }
   return pdf
 }

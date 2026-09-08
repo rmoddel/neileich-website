@@ -78,6 +78,79 @@ function dedicationSizeClass(text) {
   return 8;
 }
 
+function fitFlyerPreview(preview) {
+  if (!preview) return 1;
+
+  const measureOverflow = () => {
+    const previewBox = preview.getBoundingClientRect();
+    const sections = [
+      ".ph-preview-brand",
+      ".ph-preview-dedication",
+      ".ph-preview-details",
+    ]
+      .map((selector) => preview.querySelector(selector))
+      .filter(Boolean);
+    let overflowRatio = Math.max(
+      preview.scrollWidth / Math.max(preview.clientWidth, 1),
+      preview.scrollHeight / Math.max(preview.clientHeight, 1),
+    );
+    let previousBottom = previewBox.top;
+
+    sections.forEach((section) => {
+      const sectionBox = section.getBoundingClientRect();
+      const childBoxes = Array.from(section.children)
+        .map((child) => child.getBoundingClientRect())
+        .filter((box) => box.width || box.height);
+
+      if (!childBoxes.length) return;
+
+      const contentBox = childBoxes.reduce(
+        (box, childBox) => ({
+          top: Math.min(box.top, childBox.top),
+          right: Math.max(box.right, childBox.right),
+          bottom: Math.max(box.bottom, childBox.bottom),
+          left: Math.min(box.left, childBox.left),
+        }),
+        childBoxes[0],
+      );
+      const verticalOverflow =
+        Math.max(0, sectionBox.top - contentBox.top) +
+        Math.max(0, contentBox.bottom - sectionBox.bottom) +
+        Math.max(0, previousBottom - contentBox.top);
+      const horizontalOverflow =
+        Math.max(0, sectionBox.left - contentBox.left) +
+        Math.max(0, contentBox.right - sectionBox.right);
+
+      overflowRatio = Math.max(
+        overflowRatio,
+        1 + verticalOverflow / Math.max(sectionBox.height, 1),
+        1 + horizontalOverflow / Math.max(sectionBox.width, 1),
+      );
+      previousBottom = Math.max(previousBottom, contentBox.bottom);
+    });
+
+    return Math.max(
+      overflowRatio,
+      1 +
+        Math.max(0, previousBottom - previewBox.bottom) /
+          Math.max(previewBox.height, 1),
+    );
+  };
+
+  let contentScale = 1;
+  preview.style.setProperty("--flyer-content-scale", "1");
+
+  for (let i = 0; i < 10; i += 1) {
+    const overflowRatio = measureOverflow();
+
+    if (overflowRatio <= 1.01) break;
+    contentScale = Math.max(0.08, contentScale / overflowRatio);
+    preview.style.setProperty("--flyer-content-scale", contentScale.toFixed(3));
+  }
+
+  return contentScale;
+}
+
 export default function ParnasHayom() {
   const today = useMemo(() => new Date(), []);
   const [types, setTypes] = useState([]);
@@ -247,7 +320,6 @@ export default function ParnasHayom() {
       setOverrideVerifying(false);
     }
   };
-  const printFlyer = () => window.print();
   const loadFlyerLibraries = useCallback(() => {
     if (!flyerLibraries.current) {
       flyerLibraries.current = Promise.all([import("html2canvas"), import("jspdf")]);
@@ -256,6 +328,7 @@ export default function ParnasHayom() {
   }, []);
   const downloadFlyer = useCallback(async () => {
     if (!previewRef.current) return;
+    fitFlyerPreview(previewRef.current);
     const [{ default: html2canvas }, { jsPDF }] = await loadFlyerLibraries();
     const canvas = await html2canvas(previewRef.current, {
       backgroundColor: null,
@@ -265,6 +338,7 @@ export default function ParnasHayom() {
       windowWidth: 1200,
       onclone: (documentClone) => {
         documentClone.documentElement.classList.add("ph-exporting");
+        fitFlyerPreview(documentClone.querySelector(".ph-preview"));
       },
     });
     const pdf = new jsPDF({ orientation: "portrait", unit: "in", format: "letter" });
@@ -376,6 +450,10 @@ export default function ParnasHayom() {
   const h = selectedDate && hebrew(selectedDate);
   const canRecurring = selectedType?.recurring_enabled;
   const previewLeadIn = dedicationLeadIn(selectedType?.name);
+  const printFlyer = () => {
+    fitFlyerPreview(previewRef.current);
+    window.print();
+  };
   useEffect(() => {
     const preview = previewRef.current;
     if (!preview) return undefined;
@@ -384,75 +462,7 @@ export default function ParnasHayom() {
     const fitPreview = () => {
       window.cancelAnimationFrame(frame);
       frame = window.requestAnimationFrame(() => {
-        let contentScale = 1;
-        preview.style.setProperty("--flyer-content-scale", "1");
-
-        const measureOverflow = () => {
-          const previewBox = preview.getBoundingClientRect();
-          const sections = [
-            ".ph-preview-brand",
-            ".ph-preview-dedication",
-            ".ph-preview-details",
-          ]
-            .map((selector) => preview.querySelector(selector))
-            .filter(Boolean);
-          let overflowRatio = Math.max(
-            preview.scrollWidth / Math.max(preview.clientWidth, 1),
-            preview.scrollHeight / Math.max(preview.clientHeight, 1),
-          );
-          let previousBottom = previewBox.top;
-
-          sections.forEach((section) => {
-            const sectionBox = section.getBoundingClientRect();
-            const childBoxes = Array.from(section.children)
-              .map((child) => child.getBoundingClientRect())
-              .filter((box) => box.width || box.height);
-
-            if (!childBoxes.length) return;
-
-            const contentBox = childBoxes.reduce(
-              (box, childBox) => ({
-                top: Math.min(box.top, childBox.top),
-                right: Math.max(box.right, childBox.right),
-                bottom: Math.max(box.bottom, childBox.bottom),
-                left: Math.min(box.left, childBox.left),
-              }),
-              childBoxes[0],
-            );
-            const verticalOverflow =
-              Math.max(0, sectionBox.top - contentBox.top) +
-              Math.max(0, contentBox.bottom - sectionBox.bottom) +
-              Math.max(0, previousBottom - contentBox.top);
-            const horizontalOverflow =
-              Math.max(0, sectionBox.left - contentBox.left) +
-              Math.max(0, contentBox.right - sectionBox.right);
-
-            overflowRatio = Math.max(
-              overflowRatio,
-              1 + verticalOverflow / Math.max(sectionBox.height, 1),
-              1 + horizontalOverflow / Math.max(sectionBox.width, 1),
-            );
-            previousBottom = Math.max(previousBottom, contentBox.bottom);
-          });
-
-          return Math.max(
-            overflowRatio,
-            1 +
-              Math.max(0, previousBottom - previewBox.bottom) /
-                Math.max(previewBox.height, 1),
-          );
-        };
-
-        for (let i = 0; i < 6; i += 1) {
-          const overflowRatio = measureOverflow();
-
-          if (overflowRatio <= 1.01) break;
-          contentScale = Math.max(0.2, contentScale / overflowRatio);
-          preview.style.setProperty(
-            "--flyer-content-scale",
-            contentScale.toFixed(3),
-          );
-        }
+        fitFlyerPreview(preview);
       });
     };
 
