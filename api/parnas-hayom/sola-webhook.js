@@ -36,7 +36,7 @@ export default async function handler(req, res) {
     const rows = await sql`select s.id from sponsorships s where s.payment_reference = ${reference} or s.id::text = ${data.xCustom01 || ''} limit 1`
     const s = rows[0]
     if (!s) throw new Error(`No sponsorship found for Sola reference ${reference}`)
-    await finalizeSponsorshipPayment({ sponsorshipId: s.id, reference })
+    await finalizeSponsorshipPayment({ sponsorshipId: s.id, reference, sql })
     return res.status(200).json({ received: true })
   } catch (error) { console.error('Sola webhook error', error); return res.status(500).send('Webhook processing failed') }
 }

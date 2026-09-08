@@ -17,8 +17,22 @@ export async function createApprovedDonationCheckout({ data, sql, gatewayFetch =
     error.statusCode = 402
     throw error
   }
-  await finalizeDonationPaymentFn({ donationId: donation.id, reference: result.data.xRefNum, sql })
-  return { pending: true, donationId: donation.id, receiptToken: donation.receipt_token }
+  const reference = result.data.xRefNum
+  if (!reference) {
+    console.error('Approved Sola donation response missing xRefNum', { donationId: donation.id, result: result.data })
+    return { pending: true, donationId: donation.id, receiptToken: donation.receipt_token, finalizationPending: true }
+  }
+  try {
+    await sql`update donations set payment_provider = 'sola', payment_reference = ${reference}, updated_at = now() where id = ${donation.id}::uuid`
+  } catch (error) {
+    console.error('Approved Sola donation reference save failed', { donationId: donation.id, reference, error })
+  }
+  try {
+    await finalizeDonationPaymentFn({ donationId: donation.id, reference, sql })
+  } catch (error) {
+    console.error('Approved Sola donation finalization failed', { donationId: donation.id, reference, error })
+  }
+  return { pending: true, donationId: donation.id, receiptToken: donation.receipt_token, paymentReference: reference }
 }
 
 export default async function handler(req, res) {

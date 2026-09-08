@@ -64,6 +64,20 @@ function dedicationLeadIn(sponsorshipName) {
   return `This ${sponsorshipName || "Neileich program"} is dedicated`;
 }
 
+function dedicationSizeClass(text) {
+  const length = (text || "Your dedication will appear here")
+    .replace(/\s+/g, " ")
+    .trim().length;
+  if (length <= 18) return 1;
+  if (length <= 36) return 2;
+  if (length <= 60) return 3;
+  if (length <= 90) return 4;
+  if (length <= 140) return 5;
+  if (length <= 220) return 6;
+  if (length <= 330) return 7;
+  return 8;
+}
+
 export default function ParnasHayom() {
   const today = useMemo(() => new Date(), []);
   const [types, setTypes] = useState([]);
@@ -320,8 +334,14 @@ export default function ParnasHayom() {
       setPaymentStatus("processing");
       window.history.replaceState({}, "", `/parnas-hayom?payment=processing&sponsorship=${payload.sponsorshipId}&receipt=${payload.receiptToken}`);
     } catch (error) {
+      const message = error.message || "We could not confirm your payment status.";
       setCheckoutError(
-        error.message || "We could not begin checkout. Please try again.",
+        message.includes("approved") ||
+          message.includes("card") ||
+          message.includes("available") ||
+          message.includes("reserved")
+          ? message
+          : `${message} If your card account shows a charge, do not submit again; please contact Neileich so we can reconcile it.`,
       );
       setPaying(false);
     }
@@ -347,6 +367,54 @@ export default function ParnasHayom() {
   const h = selectedDate && hebrew(selectedDate);
   const canRecurring = selectedType?.recurring_enabled;
   const previewLeadIn = dedicationLeadIn(selectedType?.name);
+  useEffect(() => {
+    const preview = previewRef.current;
+    if (!preview) return undefined;
+
+    let frame = 0;
+    const fitPreview = () => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        let contentScale = 1;
+        preview.style.setProperty("--flyer-content-scale", "1");
+
+        for (let i = 0; i < 4; i += 1) {
+          const overflowRatio = Math.max(
+            preview.scrollWidth / Math.max(preview.clientWidth, 1),
+            preview.scrollHeight / Math.max(preview.clientHeight, 1),
+          );
+
+          if (overflowRatio <= 1.01) break;
+          contentScale = Math.max(0.2, contentScale / overflowRatio);
+          preview.style.setProperty(
+            "--flyer-content-scale",
+            contentScale.toFixed(3),
+          );
+        }
+      });
+    };
+
+    const observer =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(fitPreview);
+    observer?.observe(preview);
+    window.addEventListener("resize", fitPreview);
+    fitPreview();
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      observer?.disconnect();
+      window.removeEventListener("resize", fitPreview);
+    };
+  }, [
+    form.anonymous,
+    form.dedicationText,
+    form.dedicationType,
+    form.donorName,
+    previewLeadIn,
+    selectedDate,
+  ]);
   const receiptHebrewDate = receipt?.gregorianDate
     ? hebrew(new Date(`${receipt.gregorianDate}T12:00:00`)).renderGematriya(true)
     : "";
@@ -656,9 +724,8 @@ export default function ParnasHayom() {
               <p>{previewLeadIn}</p>
               <strong>{form.dedicationType}</strong>
               <b
-                className={`ph-preview-hebrew ph-preview-hebrew-${Math.min(
-                  Math.ceil((form.dedicationText || "Your dedication will appear here").length / 18),
-                  4,
+                className={`ph-preview-hebrew ph-preview-hebrew-${dedicationSizeClass(
+                  form.dedicationText,
                 )}`}
                 lang="he"
                 dir="auto"

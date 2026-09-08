@@ -23,6 +23,7 @@ function makeSql() {
     const text = strings.join('?')
     queries.push({ text, values })
     if (text.includes('create_pending_donation')) return [donation]
+    if (text.includes('update donations set payment_provider')) return []
     if (text.includes("status = 'failed'")) return []
     throw new Error(`Unexpected SQL in test: ${text}`)
   }
@@ -47,7 +48,7 @@ test('createApprovedDonationCheckout uses a mocked gateway and returns redirect 
       finalizeDonationPaymentFn: async (args) => finalized.push(args),
     })
 
-    assert.deepEqual(payload, { pending: true, donationId: donation.id, receiptToken: donation.receipt_token })
+    assert.deepEqual(payload, { pending: true, donationId: donation.id, receiptToken: donation.receipt_token, paymentReference: 'TEST-REF-123' })
     assert.equal(gatewayCalls.length, 1)
     assert.equal(gatewayCalls[0].url, 'https://x1.cardknox.com/gatewayjson')
     assert.equal(gatewayCalls[0].body.xAmount, '180.00')

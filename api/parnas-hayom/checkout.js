@@ -35,9 +35,22 @@ export default async function handler(req, res) {
       await sql`update sponsorships set status = 'cancelled', payment_status = 'failed', updated_at = now() where id = ${sponsorship.id}::uuid`
       return badRequest(res, result.xError || 'Your payment was not approved. Please check your card and try again.', 402)
     }
-    await sql`update sponsorships set payment_provider = 'sola', payment_reference = ${result.xRefNum}, updated_at = now() where id = ${sponsorship.id}::uuid`
-    await finalizeSponsorshipPayment({ sponsorshipId: sponsorship.id, reference: result.xRefNum })
-    return res.status(200).json({ pending: true, sponsorshipId: sponsorship.id, receiptToken: sponsorship.receipt_token })
+    const reference = result.xRefNum
+    if (!reference) {
+      console.error('Approved Sola sponsorship response missing xRefNum', { sponsorshipId: sponsorship.id, result })
+      return res.status(202).json({ pending: true, sponsorshipId: sponsorship.id, receiptToken: sponsorship.receipt_token, finalizationPending: true })
+    }
+    try {
+      await sql`update sponsorships set payment_provider = 'sola', payment_reference = ${reference}, updated_at = now() where id = ${sponsorship.id}::uuid`
+    } catch (error) {
+      console.error('Approved Sola sponsorship reference save failed', { sponsorshipId: sponsorship.id, reference, error })
+    }
+    try {
+      await finalizeSponsorshipPayment({ sponsorshipId: sponsorship.id, reference, sql })
+    } catch (error) {
+      console.error('Approved Sola sponsorship finalization failed', { sponsorshipId: sponsorship.id, reference, error })
+    }
+    return res.status(200).json({ pending: true, sponsorshipId: sponsorship.id, receiptToken: sponsorship.receipt_token, paymentReference: reference })
   } catch (caught) {
     console.error('Sola checkout failed', caught)
     return badRequest(res, caught.message?.includes('reserved') || caught.message?.includes('unavailable') ? caught.message : 'We could not process your payment. Please try again.', 409)

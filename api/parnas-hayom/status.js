@@ -5,11 +5,16 @@ export default async function handler(req, res) {
   const { sponsorshipId, receiptToken } = req.query
   if (!sponsorshipId || !receiptToken) return badRequest(res, 'Missing sponsorship receipt reference.')
   try {
-    let rows = await db()`select s.id, s.status, s.payment_status, s.payment_reference, s.donor_name, s.donor_email, s.donor_phone, s.dedication_type, s.dedication_text, s.anonymous, s.gregorian_date::text as gregorian_date, s.hebrew_year, s.hebrew_month, s.hebrew_day, s.amount_cents, s.currency, s.recurring, t.name as sponsorship_name from sponsorships s join sponsorship_types t on t.id = s.sponsorship_type_id where s.id = ${sponsorshipId}::uuid and s.receipt_token = ${receiptToken}::uuid`
+    const sql = db()
+    let rows = await sql`select s.id, s.status, s.payment_status, s.payment_reference, s.donor_name, s.donor_email, s.donor_phone, s.dedication_type, s.dedication_text, s.anonymous, s.gregorian_date::text as gregorian_date, s.hebrew_year, s.hebrew_month, s.hebrew_day, s.amount_cents, s.currency, s.recurring, t.name as sponsorship_name from sponsorships s join sponsorship_types t on t.id = s.sponsorship_type_id where s.id = ${sponsorshipId}::uuid and s.receipt_token = ${receiptToken}::uuid`
     if (!rows.length) return badRequest(res, 'Sponsorship not found.', 404)
-    if (rows[0].status === 'reserved_pending_payment' && rows[0].payment_reference) {
-      await finalizeSponsorshipPayment({ sponsorshipId: rows[0].id, reference: rows[0].payment_reference })
-      rows = await db()`select s.id, s.status, s.payment_status, s.payment_reference, s.donor_name, s.donor_email, s.donor_phone, s.dedication_type, s.dedication_text, s.anonymous, s.gregorian_date::text as gregorian_date, s.hebrew_year, s.hebrew_month, s.hebrew_day, s.amount_cents, s.currency, s.recurring, t.name as sponsorship_name from sponsorships s join sponsorship_types t on t.id = s.sponsorship_type_id where s.id = ${sponsorshipId}::uuid and s.receipt_token = ${receiptToken}::uuid`
+    if (rows[0].payment_reference && ['reserved_pending_payment', 'confirmed'].includes(rows[0].status)) {
+      try {
+        await finalizeSponsorshipPayment({ sponsorshipId: rows[0].id, reference: rows[0].payment_reference, sql })
+      } catch (error) {
+        console.error('Sponsorship status finalization failed', error)
+      }
+      rows = await sql`select s.id, s.status, s.payment_status, s.payment_reference, s.donor_name, s.donor_email, s.donor_phone, s.dedication_type, s.dedication_text, s.anonymous, s.gregorian_date::text as gregorian_date, s.hebrew_year, s.hebrew_month, s.hebrew_day, s.amount_cents, s.currency, s.recurring, t.name as sponsorship_name from sponsorships s join sponsorship_types t on t.id = s.sponsorship_type_id where s.id = ${sponsorshipId}::uuid and s.receipt_token = ${receiptToken}::uuid`
     }
     const sponsorship = rows[0]
     return res.status(200).json({

@@ -72,7 +72,18 @@ export default function Donate() {
         setDonationId(payload.donationId)
         setReceiptToken(payload.receiptToken)
         window.history.replaceState({}, '', `/donate?payment=processing&donation=${payload.donationId}&receipt=${payload.receiptToken}`)
-      } catch (caught) { setError(caught.message); setPaying(false) }
+      } catch (caught) {
+        const message = caught.message || 'We could not confirm your donation status.'
+        setError(
+          message.includes('approved') ||
+            message.includes('card') ||
+            message.includes('amount') ||
+            message.includes('email')
+            ? message
+            : `${message} If your card account shows a charge, do not submit again; please contact Neileich so we can reconcile it.`,
+        )
+        setPaying(false)
+      }
     })
   }
 

@@ -8,8 +8,12 @@ export default async function handler(req, res) {
     const sql = db()
     let rows = await sql`select id, status, payment_status, payment_reference, donor_name, donor_email, donor_phone, amount_cents, currency, created_at from donations where id = ${donationId}::uuid and receipt_token = ${receiptToken}::uuid`
     if (!rows.length) return badRequest(res, 'Donation not found.', 404)
-    if (rows[0].status === 'pending_payment' && rows[0].payment_reference) {
-      await finalizeDonationPayment({ donationId: rows[0].id, reference: rows[0].payment_reference, sql })
+    if (rows[0].payment_reference && ['pending_payment', 'confirmed'].includes(rows[0].status)) {
+      try {
+        await finalizeDonationPayment({ donationId: rows[0].id, reference: rows[0].payment_reference, sql })
+      } catch (error) {
+        console.error('Donation status finalization failed', error)
+      }
       rows = await sql`select id, status, payment_status, payment_reference, donor_name, donor_email, donor_phone, amount_cents, currency, created_at from donations where id = ${donationId}::uuid and receipt_token = ${receiptToken}::uuid`
     }
     const donation = rows[0]
