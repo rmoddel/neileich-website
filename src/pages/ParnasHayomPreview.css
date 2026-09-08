@@ -73,9 +73,17 @@
 .ph-print:hover { background: #f5e7c8; }
 
 @media (max-width: 650px) {
-  .ph-preview { gap: 1rem; width: min(100%, 22rem); min-height: 28.5rem; padding: 1.8rem 1.35rem !important; }
-  .ph-preview::after { top: 7.8rem; }
-  .ph-preview-dedication { padding: 1.3rem .35rem; }
+  .ph-preview { --flyer-scale: .78; gap: 1rem; min-height: auto; width: min(100%, 22rem); padding: 1.55rem 1.1rem !important; }
+  .ph-preview::after { top: calc(8.65rem * var(--flyer-scale)); }
+  .ph-preview-brand img { width: min(11.25rem, 82%); }
+  .ph-preview-dedication { min-height: 12.5rem; padding: 1.1rem .25rem; }
+  .ph-preview-date { max-width: 100%; white-space: normal; }
+  .ph-preview-donor { max-width: 100%; overflow-wrap: anywhere; }
+}
+
+@media (max-width: 380px) {
+  .ph-preview { --flyer-scale: .7; padding: 1.35rem .9rem !important; }
+  .ph-preview-dedication { min-height: 11.25rem; }
 }
 
 @page { size: letter portrait; margin: 0; }

@@ -175,10 +175,12 @@
 
 .header-daf-heading {
   color: #22324a;
-  font-size: .98rem;
+  font-size: 1.2rem;
   font-weight: 700;
   line-height: 1.28;
   margin: 0;
+  font-variant: small-caps;
+  text-align: center;
 }
 
 .header-daf-icons {

@@ -34,7 +34,7 @@ function Header() {
                 </a>
 
                 <section className="header-daf-section" aria-labelledby="header-daf-heading">
-                  <p id="header-daf-heading" className="header-daf-heading">Donate through your DAF</p>
+                  <p id="header-daf-heading" className="header-daf-heading">Donate with the links below:</p>
                   <div className="header-daf-icons">
                     <a className="header-daf-icon header-daf-icon-donors-fund" href="https://thedonorsfund.org/donate/NEILECH-p7711855057422424/264527675" target="_blank" rel="noreferrer" aria-label="Donate through The Donors Fund">
                       <img src="/thedonorsfund.svg" alt="" />
@@ -47,7 +47,7 @@ function Header() {
                 </section>
 
                 <p className="header-donate-note">
-                  Donating through another DAF? Search for Tax ID <strong>26-4527675</strong> and select <strong>Neileich</strong>.
+                  Or by searching for Tax ID <strong>26-4527675</strong> and selecting <strong>Neileich</strong>.
                 </p>
               </div>
             )}
