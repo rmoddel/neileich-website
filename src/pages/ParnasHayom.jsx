@@ -190,6 +190,7 @@ export default function ParnasHayom() {
   const [selectedDate, setSelectedDate] = useState(null);
   const [form, setForm] = useState({
     dedicationType: dedicationTypes[0],
+    customDedicationType: "",
     dedicationText: "",
     donorName: "",
     donorEmail: "",
@@ -321,8 +322,15 @@ export default function ParnasHayom() {
       ? Number(overrideAmount)
       : selectedType.price_cents / 100);
   const selectedAmountLabel = selectedAmount ? money(selectedAmount) : "";
+  const isCustomDedicationType = form.dedicationType === "Custom";
+  const effectiveDedicationType = isCustomDedicationType
+    ? form.customDedicationType.trim()
+    : form.dedicationType;
   const hasDedicationRequired = Boolean(
-    form.dedicationText.trim() && form.donorName.trim() && form.donorEmail.trim(),
+    effectiveDedicationType &&
+      form.dedicationText.trim() &&
+      form.donorName.trim() &&
+      form.donorEmail.trim(),
   );
   const hasValidDonorEmail = looksLikeEmail(form.donorEmail);
   const dedicationComplete = hasDedicationRequired && hasValidDonorEmail;
@@ -401,7 +409,9 @@ export default function ParnasHayom() {
   const continueToPayment = () => {
     if (!paymentStepReady) {
       setCheckoutError(
-        hasDedicationRequired
+        isCustomDedicationType && !effectiveDedicationType
+          ? "Please name the custom dedication type."
+          : hasDedicationRequired
           ? "Enter a valid email address."
           : "Please complete the dedication and donor details.",
       );
@@ -482,6 +492,7 @@ export default function ParnasHayom() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
+          dedicationType: effectiveDedicationType,
           sponsorshipTypeId: selectedType.id,
           sponsorshipName: selectedType.name,
           adjustedAmount: overrideApproved && overrideAmount ? overrideAmount : undefined,
@@ -535,7 +546,9 @@ export default function ParnasHayom() {
     if (!dedicationComplete) {
       goToStep("dedication");
       return setCheckoutError(
-        hasDedicationRequired
+        isCustomDedicationType && !effectiveDedicationType
+          ? "Please name the custom dedication type."
+          : hasDedicationRequired
           ? "Enter a valid email address."
           : "Please complete the dedication and donor details.",
       );
@@ -563,8 +576,12 @@ export default function ParnasHayom() {
       ? `${compactText(selectedType.name, "Selected", 18)} · ${selectedAmountLabel}`
       : "Choose one",
     date: selectedDate ? briefDate(selectedDate) : "Pick a day",
-    dedication: form.dedicationText.trim()
-      ? compactText(form.dedicationText, "Written", 22)
+    dedication: effectiveDedicationType && form.dedicationText.trim()
+      ? `${compactText(effectiveDedicationType, "Type", 13)} · ${compactText(form.dedicationText, "Wording", 18)}`
+      : isCustomDedicationType && !effectiveDedicationType
+        ? "Name custom type"
+        : form.dedicationText.trim()
+          ? compactText(form.dedicationText, "Written", 22)
       : form.donorName.trim()
         ? `By ${compactText(form.donorName, "donor", 18)}`
         : "Add wording",
@@ -610,6 +627,7 @@ export default function ParnasHayom() {
   }, [
     activeStep,
     form.anonymous,
+    form.customDedicationType,
     form.dedicationText,
     form.dedicationType,
     form.donorName,
@@ -861,6 +879,19 @@ export default function ParnasHayom() {
                     ))}
                   </select>
                 </label>
+                {isCustomDedicationType && (
+                  <label className="full ph-custom-dedication-type">
+                    Custom dedication type
+                    <input
+                      required
+                      name="customDedicationType"
+                      value={form.customDedicationType}
+                      onChange={change}
+                      maxLength="120"
+                      placeholder="e.g. In gratitude for"
+                    />
+                  </label>
+                )}
                 <label className="full">
                   Dedication wording
                   <textarea
@@ -964,7 +995,7 @@ export default function ParnasHayom() {
                 </div>
                 <div className="ph-preview-dedication">
                   <p>{previewLeadIn}</p>
-                  <strong>{form.dedicationType}</strong>
+                  <strong>{effectiveDedicationType}</strong>
                   <b
                     className={`ph-preview-hebrew ph-preview-hebrew-${dedicationSizeClass(
                       form.dedicationText,

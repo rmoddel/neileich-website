@@ -126,6 +126,10 @@
   margin-top: 1.25rem;
 }
 
+.ph-custom-dedication-type {
+  animation: ph-custom-type-in 220ms ease both;
+}
+
 @keyframes ph-flow-panel-in {
   0% {
     opacity: 0;
@@ -148,6 +152,18 @@
 @keyframes ph-crumb-sheen {
   to {
     transform: translateX(125%);
+  }
+}
+
+@keyframes ph-custom-type-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
@@ -182,7 +198,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .ph-flow-crumb,
-  .ph-flow-panel {
+  .ph-flow-panel,
+  .ph-custom-dedication-type {
     animation: none;
     transition: none;
   }
