@@ -5,6 +5,7 @@ import "./ParnasHayomPreview.css";
 import "./ParnasHayomPayment.css";
 import "./ParnasHayomSuccess.css";
 import "./ParnasHayomOverride.css";
+import "./ParnasHayomFlow.css";
 
 const fallbackTypes = [
   {
@@ -40,6 +41,31 @@ const prettyDate = (date) =>
     year: "numeric",
     timeZone: orgTimeZone,
   }).format(date);
+const briefDate = (date) =>
+  new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: orgTimeZone,
+  }).format(date);
+const money = (amount) =>
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: Number.isInteger(amount) ? 0 : 2,
+    maximumFractionDigits: Number.isInteger(amount) ? 0 : 2,
+  }).format(amount);
+const compactText = (value, fallback, max = 26) => {
+  const text = String(value || "").replace(/\s+/g, " ").trim();
+  if (!text) return fallback;
+  return text.length > max ? `${text.slice(0, max - 1)}…` : text;
+};
+const looksLikeEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+const flowSteps = [
+  { id: "type", number: 1, label: "Sponsorship" },
+  { id: "date", number: 2, label: "Date" },
+  { id: "dedication", number: 3, label: "Dedication" },
+  { id: "payment", number: 4, label: "Payment" },
+];
 const calendarDays = (month) => {
   const start = new Date(month.getFullYear(), month.getMonth(), 1);
   const leading = start.getDay();
@@ -155,6 +181,7 @@ export default function ParnasHayom() {
   const today = useMemo(() => new Date(), []);
   const [types, setTypes] = useState([]);
   const [selectedType, setSelectedType] = useState(null);
+  const [activeStep, setActiveStep] = useState("type");
   const [month, setMonth] = useState(
     new Date(today.getFullYear(), today.getMonth(), 1),
   );
@@ -205,6 +232,7 @@ export default function ParnasHayom() {
   );
   const [receipt, setReceipt] = useState(null);
   const previewRef = useRef(null);
+  const flowRef = useRef(null);
   const flyerLibraries = useRef(null);
   const paymentState = new URLSearchParams(window.location.search).get(
     "payment",
@@ -215,11 +243,9 @@ export default function ParnasHayom() {
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then(({ types: next }) => {
         setTypes(next);
-        setSelectedType(next[0] || null);
       })
       .catch(() => {
         setTypes(fallbackTypes);
-        setSelectedType(fallbackTypes[0]);
       });
   }, []);
   useEffect(() => {
@@ -289,11 +315,55 @@ export default function ParnasHayom() {
       day >= new Date(today.getFullYear(), today.getMonth(), today.getDate()) &&
       (usePreviewAvailability || availability[dateKey(day)]),
   );
-  const selectFirst = () => setSelectedDate(availableDays[0] || null);
-  const selectRandom = () =>
-    setSelectedDate(
-      availableDays[Math.floor(Math.random() * availableDays.length)] || null,
-    );
+  const selectedAmount =
+    selectedType &&
+    (overrideApproved && overrideAmount && Number(overrideAmount) > 0
+      ? Number(overrideAmount)
+      : selectedType.price_cents / 100);
+  const selectedAmountLabel = selectedAmount ? money(selectedAmount) : "";
+  const hasDedicationRequired = Boolean(
+    form.dedicationText.trim() && form.donorName.trim() && form.donorEmail.trim(),
+  );
+  const hasValidDonorEmail = looksLikeEmail(form.donorEmail);
+  const dedicationComplete = hasDedicationRequired && hasValidDonorEmail;
+  const paymentStepReady = Boolean(selectedType && selectedDate && dedicationComplete);
+  const goToStep = (step) => {
+    setActiveStep(step);
+    window.setTimeout(() => {
+      flowRef.current?.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "auto"
+          : "smooth",
+        block: "start",
+      });
+    }, 80);
+  };
+  const chooseType = (type) => {
+    const typeChanged = selectedType?.id !== type.id;
+    setSelectedType(type);
+    if (typeChanged) setSelectedDate(null);
+    setCheckoutError("");
+    if (typeChanged) setOverrideAmount("");
+    setForm((current) => ({
+      ...current,
+      recurring: typeChanged ? false : current.recurring,
+    }));
+    goToStep("date");
+  };
+  const chooseDate = (day) => {
+    setSelectedDate(day);
+    setCheckoutError("");
+    goToStep("dedication");
+  };
+  const selectFirst = () => {
+    const nextDate = availableDays[0] || null;
+    if (nextDate) chooseDate(nextDate);
+  };
+  const selectRandom = () => {
+    const nextDate =
+      availableDays[Math.floor(Math.random() * availableDays.length)] || null;
+    if (nextDate) chooseDate(nextDate);
+  };
   const change = (event) =>
     setForm((current) => ({
       ...current,
@@ -328,6 +398,19 @@ export default function ParnasHayom() {
     }
     return flyerLibraries.current;
   }, []);
+  const continueToPayment = () => {
+    if (!paymentStepReady) {
+      setCheckoutError(
+        hasDedicationRequired
+          ? "Enter a valid email address."
+          : "Please complete the dedication and donor details.",
+      );
+      return;
+    }
+    setCheckoutError("");
+    goToStep("payment");
+    void loadFlyerLibraries();
+  };
   const downloadFlyer = useCallback(async () => {
     if (!previewRef.current) return;
     fitFlyerPreview(previewRef.current);
@@ -445,7 +528,18 @@ export default function ParnasHayom() {
   };
   const checkout = (event) => {
     event.preventDefault();
-    if (!selectedDate || !selectedType) return setCheckoutError("Please choose an available date.");
+    if (!selectedDate || !selectedType) {
+      goToStep(selectedType ? "date" : "type");
+      return setCheckoutError("Please choose an available date.");
+    }
+    if (!dedicationComplete) {
+      goToStep("dedication");
+      return setCheckoutError(
+        hasDedicationRequired
+          ? "Enter a valid email address."
+          : "Please complete the dedication and donor details.",
+      );
+    }
     if (!/^\d{4}$/.test(cardExpiry)) return setCheckoutError("Enter your card expiration as MMYY.");
     if (!ifieldsReady || !tokenInputs.current || !window.getTokens) return setCheckoutError("Secure card fields are still loading. Please try again.");
     setPaying(true);
@@ -464,6 +558,30 @@ export default function ParnasHayom() {
   const h = selectedDate && hebrew(selectedDate);
   const canRecurring = selectedType?.recurring_enabled;
   const previewLeadIn = dedicationLeadIn(selectedType?.name);
+  const stepSummaries = {
+    type: selectedType
+      ? `${compactText(selectedType.name, "Selected", 18)} · ${selectedAmountLabel}`
+      : "Choose one",
+    date: selectedDate ? briefDate(selectedDate) : "Pick a day",
+    dedication: form.dedicationText.trim()
+      ? compactText(form.dedicationText, "Written", 22)
+      : form.donorName.trim()
+        ? `By ${compactText(form.donorName, "donor", 18)}`
+        : "Add wording",
+    payment: selectedAmountLabel || "Card details",
+  };
+  const reachableSteps = {
+    type: true,
+    date: Boolean(selectedType),
+    dedication: Boolean(selectedType && selectedDate),
+    payment: paymentStepReady,
+  };
+  const completedSteps = {
+    type: Boolean(selectedType),
+    date: Boolean(selectedDate),
+    dedication: dedicationComplete,
+    payment: paymentStatus === "processing",
+  };
   useEffect(() => {
     const preview = previewRef.current;
     if (!preview) return undefined;
@@ -490,6 +608,7 @@ export default function ParnasHayom() {
       window.removeEventListener("resize", fitPreview);
     };
   }, [
+    activeStep,
     form.anonymous,
     form.dedicationText,
     form.dedicationType,
@@ -551,300 +670,340 @@ export default function ParnasHayom() {
             Checkout was canceled. Your date will be released shortly.
           </div>
         )}
-        <ul className="ph-steps">
-          <li className={selectedType ? "done" : ""}>1. Choose</li>
-          <li className={selectedDate ? "done" : ""}>2. Date</li>
-          <li>3. Dedication</li>
-          <li>4. Payment</li>
-        </ul>
-        <section className="ph-card">
-          <div className="ph-heading">
-            <span>1</span>
-            <div>
-              <h2>Choose a sponsorship</h2>
-              <p>Each gift directly supports Neileich’s daily work.</p>
-            </div>
-          </div>
-          <div className="ph-types">
-            {types.map((type) => (
-              <button
-                type="button"
-                className={`ph-type ${selectedType?.id === type.id ? "selected" : ""}`}
-                onClick={() => {
-                  setSelectedType(type);
-                  setSelectedDate(null);
-                  setForm((current) => ({ ...current, recurring: false }));
-                }}
-                key={type.id}
-              >
-                <strong>{type.name}</strong>
-                <small>{type.description}</small>
-                <b>${(type.price_cents / 100).toLocaleString()}</b>
-              </button>
-            ))}
-          </div>
-          {selectedType && (
-            <section className="ph-amount-override" aria-labelledby="parnas-amount-override-heading">
-              <strong id="parnas-amount-override-heading">Staff adjustment</strong>
-              <div className="ph-override-code">
-                <label>Code<input type="password" value={overrideCode} onChange={(event) => { setOverrideCode(event.target.value); setOverrideApproved(false); setOverrideAmount(""); setOverrideError(""); }} autoComplete="off" /></label>
-                <button type="button" onClick={verifyOverrideCode} disabled={!overrideCode.trim() || overrideVerifying}>{overrideVerifying ? "Checking…" : "Unlock"}</button>
+        <nav className="ph-flowbar" aria-label="Sponsorship progress" ref={flowRef}>
+          {flowSteps.map((step) => (
+            <button
+              type="button"
+              key={step.id}
+              className={[
+                "ph-flow-crumb",
+                activeStep === step.id ? "active" : "",
+                completedSteps[step.id] ? "complete" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              disabled={!reachableSteps[step.id]}
+              aria-current={activeStep === step.id ? "step" : undefined}
+              onClick={() => {
+                if (reachableSteps[step.id]) goToStep(step.id);
+              }}
+            >
+              <span className="ph-flow-number">{step.number}</span>
+              <span className="ph-flow-copy">
+                <strong>{step.label}</strong>
+                <small>{stepSummaries[step.id]}</small>
+              </span>
+            </button>
+          ))}
+        </nav>
+        <div className="ph-flow-stage">
+          {activeStep === "type" && (
+            <section className="ph-card ph-flow-panel" key="type">
+              <div className="ph-heading">
+                <span>1</span>
+                <div>
+                  <h2>Choose a sponsorship</h2>
+                  <p>Each gift directly supports Neileich’s daily work.</p>
+                </div>
               </div>
-              {overrideError && <p className="ph-override-error">{overrideError}</p>}
-              {overrideApproved && <div className="ph-adjustment-amount">
-                <label>Adjusted amount<input type="number" min="1" step="0.01" inputMode="decimal" value={overrideAmount} onChange={(event) => setOverrideAmount(event.target.value)} placeholder={(selectedType.price_cents / 100).toFixed(2)} /></label>
-              </div>}
-            </section>
-          )}
-        </section>
-        <section className="ph-card">
-          <div className="ph-heading">
-            <span>2</span>
-            <div>
-              <h2>Choose your date</h2>
-              <p>Dates are held for 20 minutes once you continue to payment.</p>
-            </div>
-          </div>
-          <div className="ph-calendar-tools">
-            <button
-              type="button"
-              onClick={() =>
-                setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))
-              }
-            >
-              ←
-            </button>
-            <strong>
-              {month.toLocaleDateString("en-US", {
-                month: "long",
-                year: "numeric",
-              })}
-            </strong>
-            <button
-              type="button"
-              onClick={() =>
-                setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))
-              }
-            >
-              →
-            </button>
-            <div />
-            <button
-              type="button"
-              className="ph-text-button"
-              onClick={selectFirst}
-            >
-              First available
-            </button>
-            <button
-              type="button"
-              className="ph-text-button"
-              onClick={selectRandom}
-            >
-              Random date
-            </button>
-          </div>
-          {calendarError ? (
-            <p className="ph-error">{calendarError}</p>
-          ) : (
-            <>
-              <div className="ph-weekdays">
-                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
-                  (day) => (
-                    <span key={day}>{day}</span>
-                  ),
-                )}
-              </div>
-              <div className="ph-grid">
-                {calendarDays(month).map((day, index) => {
-                  if (!day) return <i key={index} />;
-                  const key = dateKey(day);
-                  const past =
-                    day <
-                    new Date(
-                      today.getFullYear(),
-                      today.getMonth(),
-                      today.getDate(),
-                    );
-                  const available = !past && availability[key];
-                  return (
+              {types.length ? (
+                <div className="ph-types">
+                  {types.map((type) => (
                     <button
                       type="button"
-                      aria-label={prettyDate(day)}
-                      key={key}
-                      disabled={!available}
-                      onClick={() => setSelectedDate(day)}
-                      className={`${selectedDate && dateKey(selectedDate) === key ? "selected" : ""} ${!available ? "unavailable" : ""}`}
+                      className={`ph-type ${selectedType?.id === type.id ? "selected" : ""}`}
+                      onClick={() => chooseType(type)}
+                      key={type.id}
                     >
-                      <b>{day.getDate()}</b>
-                      <small>{hebrew(day).renderGematriya(true, true)}</small>
+                      <strong>{type.name}</strong>
+                      <small>{type.description}</small>
+                      <b>{money(type.price_cents / 100)}</b>
                     </button>
-                  );
-                })}
-              </div>
-              <p className="ph-calendar-note">
-                {selectedDate ? (
-                  <>
-                    <strong>{prettyDate(selectedDate)}</strong> ·{" "}
-                    <span lang="he">{h.renderGematriya(true)}</span>
-                  </>
-                ) : (
-                  "Select an available date. Hebrew and Gregorian dates are shown together."
-                )}
-              </p>
-            </>
+                  ))}
+                </div>
+              ) : (
+                <p className="ph-calendar-note">Loading sponsorship options…</p>
+              )}
+              {selectedType && (
+                <section className="ph-amount-override" aria-labelledby="parnas-amount-override-heading">
+                  <strong id="parnas-amount-override-heading">Staff adjustment</strong>
+                  <div className="ph-override-code">
+                    <label>Code<input type="password" value={overrideCode} onChange={(event) => { setOverrideCode(event.target.value); setOverrideApproved(false); setOverrideAmount(""); setOverrideError(""); }} autoComplete="off" /></label>
+                    <button type="button" onClick={verifyOverrideCode} disabled={!overrideCode.trim() || overrideVerifying}>{overrideVerifying ? "Checking…" : "Unlock"}</button>
+                  </div>
+                  {overrideError && <p className="ph-override-error">{overrideError}</p>}
+                  {overrideApproved && <div className="ph-adjustment-amount">
+                    <label>Adjusted amount<input type="number" min="1" step="0.01" inputMode="decimal" value={overrideAmount} onChange={(event) => setOverrideAmount(event.target.value)} placeholder={(selectedType.price_cents / 100).toFixed(2)} /></label>
+                  </div>}
+                </section>
+              )}
+            </section>
           )}
-        </section>
-        <form className="ph-card ph-form" onSubmit={checkout}>
-          <div className="ph-heading">
-            <span>3</span>
-            <div>
-              <h2>Share your dedication</h2>
-              <p>We’ll include this in your sponsorship acknowledgment.</p>
-            </div>
-          </div>
-          <div className="ph-form-grid">
-            <label>
-              Dedication type
-              <select
-                name="dedicationType"
-                value={form.dedicationType}
-                onChange={change}
-              >
-                {dedicationTypes.map((type) => (
-                  <option key={type}>{type}</option>
-                ))}
-              </select>
-            </label>
-            <label className="full">
-              Dedication wording
-              <textarea
-                required
-                name="dedicationText"
-                value={form.dedicationText}
-                onChange={change}
-                placeholder="e.g. ר׳ אברהם בן ר׳ משה ז״ל"
-                rows="3"
-                maxLength="500"
-              />
-            </label>
-            <label>
-              Full name
-              <input
-                required
-                name="donorName"
-                value={form.donorName}
-                onChange={change}
-                autoComplete="name"
-              />
-            </label>
-            <label>
-              Email
-              <input
-                required
-                type="email"
-                name="donorEmail"
-                value={form.donorEmail}
-                onChange={change}
-                autoComplete="email"
-              />
-            </label>
-            <label>
-              Phone <em>(optional)</em>
-              <input
-                name="donorPhone"
-                value={form.donorPhone}
-                onChange={change}
-                autoComplete="tel"
-              />
-            </label>
-            <label className="ph-check">
-              <input
-                type="checkbox"
-                name="anonymous"
-                checked={form.anonymous}
-                onChange={change}
-              />{" "}
-              Keep my name anonymous publicly
-            </label>
-            {canRecurring && (
-              <label className="full ph-check recurring">
-                <input
-                  type="checkbox"
-                  name="recurring"
-                  checked={form.recurring}
-                  onChange={change}
-                />{" "}
-                Make this an annual sponsorship on this Hebrew date. We’ll email
-                you a secure renewal link each year.
-              </label>
-            )}
-          </div>
-          <section className="ph-payment-fields" aria-label="Secure payment details">
-            <h3>Secure payment</h3>
-            <p>Your card details are securely handled by Sola Payments.</p>
-            <label>Card number
-              <iframe title="Secure card number" data-ifields-id="card-number" data-ifields-placeholder="Card number" src="https://cdn.cardknox.com/ifields/2.15.2309.2601/ifield.htm" />
-            </label>
-            <div className="ph-payment-grid">
-              <label>Expiration (MMYY)<input value={cardExpiry} onChange={(event) => setCardExpiry(event.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" autoComplete="cc-exp" placeholder="MMYY" required /></label>
-              <label>CVV
-                <iframe title="Secure card CVV" data-ifields-id="cvv" data-ifields-placeholder="CVV" src="https://cdn.cardknox.com/ifields/2.15.2309.2601/ifield.htm" />
-              </label>
-            </div>
-            <div ref={tokenInputs}>
-              <input name="xCardNum" data-ifields-id="card-number-token" type="hidden" />
-              <input name="xCVV" data-ifields-id="cvv-token" type="hidden" />
-            </div>
-          </section>
-          <div className="ph-preview" ref={previewRef}>
-            <div className="ph-preview-brand">
-              <span className="ph-preview-kicker">Parnas Hayom</span>
-              <img src="/logo-english.png" alt="Neileich" />
-              <span className="ph-preview-tagline">Building Belonging. Thriving children. Strong Kehila.</span>
-            </div>
-            <div className="ph-preview-dedication">
-              <p>{previewLeadIn}</p>
-              <strong>{form.dedicationType}</strong>
-              <b
-                className={`ph-preview-hebrew ph-preview-hebrew-${dedicationSizeClass(
-                  form.dedicationText,
-                )}`}
-                lang="he"
-                dir="auto"
-              >
-                {form.dedicationText || "Your dedication will appear here"}
-              </b>
-            </div>
-            <div className="ph-preview-details">
-              <small className="ph-preview-date">
-                {selectedDate
-                  ? `${prettyDate(selectedDate)} · ${h.renderGematriya(true)}`
-                  : "Select a date to add it here"}
-              </small>
-              <small className="ph-preview-donor">
-                Sponsored by{" "}
-                {form.anonymous ? "Anonymous" : form.donorName || "Your name"}
-              </small>
-            </div>
-          </div>
-          <button type="button" className="ph-print" onClick={handleDownloadFlyer} disabled={flyerDownloading}>
-            {flyerDownloading ? "Preparing PDF…" : "Download dedication PDF"}
-          </button>
-          {flyerActionError && <p className="ph-error">{flyerActionError}</p>}
-          {checkoutError && <p className="ph-error">{checkoutError}</p>}
-          <button className="ph-pay" disabled={paying}>
-            {paying
-              ? paymentStatus === "processing"
-                ? "Confirming your payment…"
-                : "Securely authorizing your card…"
-              : `Continue to secure payment${selectedType ? ` · $${(overrideApproved && overrideAmount ? Number(overrideAmount) : selectedType.price_cents / 100).toLocaleString()}` : ""}`}
-          </button>
-          <p className="ph-secure">
-            Secure payment by Sola Payments. Your card information is never stored by
-            Neileich.
-          </p>
-        </form>
+          {activeStep === "date" && selectedType && (
+            <section className="ph-card ph-flow-panel" key="date">
+              <div className="ph-heading">
+                <span>2</span>
+                <div>
+                  <h2>Choose your date</h2>
+                  <p>Dates are held for 20 minutes once you continue to payment.</p>
+                </div>
+              </div>
+              <div className="ph-calendar-tools">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))
+                  }
+                >
+                  ←
+                </button>
+                <strong>
+                  {month.toLocaleDateString("en-US", {
+                    month: "long",
+                    year: "numeric",
+                  })}
+                </strong>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))
+                  }
+                >
+                  →
+                </button>
+                <div />
+                <button
+                  type="button"
+                  className="ph-text-button"
+                  onClick={selectFirst}
+                >
+                  First available
+                </button>
+                <button
+                  type="button"
+                  className="ph-text-button"
+                  onClick={selectRandom}
+                >
+                  Random date
+                </button>
+              </div>
+              {calendarError ? (
+                <p className="ph-error">{calendarError}</p>
+              ) : (
+                <>
+                  <div className="ph-weekdays">
+                    {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+                      (day) => (
+                        <span key={day}>{day}</span>
+                      ),
+                    )}
+                  </div>
+                  <div className="ph-grid">
+                    {calendarDays(month).map((day, index) => {
+                      if (!day) return <i key={index} />;
+                      const key = dateKey(day);
+                      const past =
+                        day <
+                        new Date(
+                          today.getFullYear(),
+                          today.getMonth(),
+                          today.getDate(),
+                        );
+                      const available = !past && availability[key];
+                      return (
+                        <button
+                          type="button"
+                          aria-label={prettyDate(day)}
+                          key={key}
+                          disabled={!available}
+                          onClick={() => chooseDate(day)}
+                          className={`${selectedDate && dateKey(selectedDate) === key ? "selected" : ""} ${!available ? "unavailable" : ""}`}
+                        >
+                          <b>{day.getDate()}</b>
+                          <small>{hebrew(day).renderGematriya(true, true)}</small>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="ph-calendar-note">
+                    {selectedDate ? (
+                      <>
+                        <strong>{prettyDate(selectedDate)}</strong> ·{" "}
+                        <span lang="he">{h.renderGematriya(true)}</span>
+                      </>
+                    ) : (
+                      "Select an available date. Hebrew and Gregorian dates are shown together."
+                    )}
+                  </p>
+                </>
+              )}
+            </section>
+          )}
+          {activeStep === "dedication" && selectedType && selectedDate && (
+            <section className="ph-card ph-form ph-flow-panel" key="dedication">
+              <div className="ph-heading">
+                <span>3</span>
+                <div>
+                  <h2>Share your dedication</h2>
+                  <p>We’ll include this in your sponsorship acknowledgment.</p>
+                </div>
+              </div>
+              <div className="ph-form-grid">
+                <label>
+                  Dedication type
+                  <select
+                    name="dedicationType"
+                    value={form.dedicationType}
+                    onChange={change}
+                  >
+                    {dedicationTypes.map((type) => (
+                      <option key={type}>{type}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="full">
+                  Dedication wording
+                  <textarea
+                    required
+                    name="dedicationText"
+                    value={form.dedicationText}
+                    onChange={change}
+                    placeholder="e.g. ר׳ אברהם בן ר׳ משה ז״ל"
+                    rows="3"
+                    maxLength="500"
+                  />
+                </label>
+                <label>
+                  Full name
+                  <input
+                    required
+                    name="donorName"
+                    value={form.donorName}
+                    onChange={change}
+                    autoComplete="name"
+                  />
+                </label>
+                <label>
+                  Email
+                  <input
+                    required
+                    type="email"
+                    name="donorEmail"
+                    value={form.donorEmail}
+                    onChange={change}
+                    autoComplete="email"
+                  />
+                </label>
+                <label>
+                  Phone <em>(optional)</em>
+                  <input
+                    name="donorPhone"
+                    value={form.donorPhone}
+                    onChange={change}
+                    autoComplete="tel"
+                  />
+                </label>
+                <label className="ph-check">
+                  <input
+                    type="checkbox"
+                    name="anonymous"
+                    checked={form.anonymous}
+                    onChange={change}
+                  />{" "}
+                  Keep my name anonymous publicly
+                </label>
+                {canRecurring && (
+                  <label className="full ph-check recurring">
+                    <input
+                      type="checkbox"
+                      name="recurring"
+                      checked={form.recurring}
+                      onChange={change}
+                    />{" "}
+                    Make this an annual sponsorship on this Hebrew date. We’ll email
+                    you a secure renewal link each year.
+                  </label>
+                )}
+              </div>
+              {checkoutError && <p className="ph-error">{checkoutError}</p>}
+              <button type="button" className="ph-pay ph-next" onClick={continueToPayment} disabled={!hasDedicationRequired}>
+                Continue to payment
+              </button>
+            </section>
+          )}
+          {activeStep === "payment" && paymentStepReady && (
+            <form className="ph-card ph-form ph-flow-panel" onSubmit={checkout} key="payment">
+              <div className="ph-heading">
+                <span>4</span>
+                <div>
+                  <h2>Secure payment</h2>
+                  <p>Your card details are securely handled by Sola Payments.</p>
+                </div>
+              </div>
+              <section className="ph-payment-fields" aria-label="Secure payment details">
+                <h3>Card details</h3>
+                <label>Card number
+                  <iframe title="Secure card number" data-ifields-id="card-number" data-ifields-placeholder="Card number" src="https://cdn.cardknox.com/ifields/2.15.2309.2601/ifield.htm" />
+                </label>
+                <div className="ph-payment-grid">
+                  <label>Expiration (MMYY)<input value={cardExpiry} onChange={(event) => setCardExpiry(event.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" autoComplete="cc-exp" placeholder="MMYY" required /></label>
+                  <label>CVV
+                    <iframe title="Secure card CVV" data-ifields-id="cvv" data-ifields-placeholder="CVV" src="https://cdn.cardknox.com/ifields/2.15.2309.2601/ifield.htm" />
+                  </label>
+                </div>
+                <div ref={tokenInputs}>
+                  <input name="xCardNum" data-ifields-id="card-number-token" type="hidden" />
+                  <input name="xCVV" data-ifields-id="cvv-token" type="hidden" />
+                </div>
+              </section>
+              <div className="ph-preview" ref={previewRef}>
+                <div className="ph-preview-brand">
+                  <span className="ph-preview-kicker">Parnas Hayom</span>
+                  <img src="/logo-english.png" alt="Neileich" />
+                  <span className="ph-preview-tagline">Building Belonging. Thriving children. Strong Kehila.</span>
+                </div>
+                <div className="ph-preview-dedication">
+                  <p>{previewLeadIn}</p>
+                  <strong>{form.dedicationType}</strong>
+                  <b
+                    className={`ph-preview-hebrew ph-preview-hebrew-${dedicationSizeClass(
+                      form.dedicationText,
+                    )}`}
+                    lang="he"
+                    dir="auto"
+                  >
+                    {form.dedicationText || "Your dedication will appear here"}
+                  </b>
+                </div>
+                <div className="ph-preview-details">
+                  <small className="ph-preview-date">
+                    {`${prettyDate(selectedDate)} · ${h.renderGematriya(true)}`}
+                  </small>
+                  <small className="ph-preview-donor">
+                    Sponsored by{" "}
+                    {form.anonymous ? "Anonymous" : form.donorName || "Your name"}
+                  </small>
+                </div>
+              </div>
+              <button type="button" className="ph-print" onClick={handleDownloadFlyer} disabled={flyerDownloading}>
+                {flyerDownloading ? "Preparing PDF…" : "Download dedication PDF"}
+              </button>
+              {flyerActionError && <p className="ph-error">{flyerActionError}</p>}
+              {checkoutError && <p className="ph-error">{checkoutError}</p>}
+              <button className="ph-pay" disabled={paying}>
+                {paying
+                  ? paymentStatus === "processing"
+                    ? "Confirming your payment…"
+                    : "Securely authorizing your card…"
+                  : `Submit secure payment · ${selectedAmountLabel}`}
+              </button>
+              <p className="ph-secure">
+                Secure payment by Sola Payments. Your card information is never stored by
+                Neileich.
+              </p>
+            </form>
+          )}
+        </div>
       </div>
     </div>
   );
