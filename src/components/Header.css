@@ -93,8 +93,11 @@
 
 .header-donate-options {
   display: grid;
-  gap: .5rem;
-  padding: .75rem;
+  gap: 1rem;
+  padding: 1.1rem;
+  border-color: #dce4eb;
+  border-radius: 18px;
+  box-shadow: 0 18px 48px rgb(15 41 66 / 16%);
   width: min(430px, calc(100vw - 2rem));
 }
 
@@ -165,75 +168,134 @@
 }
 
 .header-daf-section {
-  background: #f7f9fc;
-  border: 1px solid #edf1f5;
-  border-radius: 8px;
-  display: grid;
-  gap: .65rem;
-  padding: .85rem;
+  background: #f5f7f9;
+  border: 1px solid #e5eaf0;
+  border-radius: 12px;
+  padding: 1rem;
 }
 
 .header-daf-heading {
   color: #22324a;
-  font-size: 1.2rem;
+  font-size: .95rem;
   font-weight: 700;
-  line-height: 1.28;
+  line-height: 1.4;
   margin: 0;
-  font-variant: small-caps;
-  text-align: center;
+}
+
+.header-daf-description {
+  color: #66758a;
+  font-size: .82rem;
+  line-height: 1.5;
+  margin: .2rem 0 .9rem;
 }
 
 .header-daf-icons {
   display: grid;
-  gap: .65rem;
-  grid-template-columns: 1fr 1fr;
+  gap: .75rem;
+  grid-template-columns: minmax(0, 1fr);
 }
 
-.header-daf-icon {
+.nav .header-daf-icon {
+  --daf-background: #fff;
+  --daf-border: #dce4ee;
+  --daf-hover: #f7faff;
+  --daf-ink: #315787;
   align-items: center;
-  background: #fff;
-  border: 1px solid #dfe6ee;
-  border-radius: 8px;
+  background: var(--daf-background);
+  border: 1px solid var(--daf-border);
+  border-radius: 10px;
+  color: var(--daf-ink);
   display: flex;
-  height: 56px;
+  min-height: 72px;
   justify-content: center;
-  padding: .55rem;
+  padding: 1rem 2.75rem;
+  position: relative;
+  text-decoration: none;
+  box-shadow: 0 2px 4px rgb(15 41 66 / 4%);
+  transition: background-color 180ms ease, border-color 180ms ease,
+    box-shadow 180ms ease, transform 180ms ease;
 }
 
-.header-daf-icon:hover,
-.header-daf-icon:focus-visible {
-  background: var(--color-background);
-  border-color: #cdd9e5;
+.header-daf-icon::after {
+  border-right: 1.5px solid currentColor;
+  border-top: 1.5px solid currentColor;
+  content: '';
+  height: 7px;
+  position: absolute;
+  right: 1.15rem;
+  transform: rotate(45deg);
+  width: 7px;
+}
+
+.nav .header-daf-icon:focus-visible {
+  outline: 3px solid #b78b39;
+  outline-offset: 3px;
+}
+
+@media (hover: hover) {
+  .nav .header-daf-icon:hover {
+    background: var(--daf-hover);
+    border-color: var(--daf-ink);
+    box-shadow: 0 5px 12px rgb(15 41 66 / 12%);
+    transform: translateY(-2px);
+  }
+}
+
+.nav .header-daf-icon:active {
+  transform: translateY(0);
+  box-shadow: none;
 }
 
 .header-daf-icon img {
   display: block;
-  max-width: none;
+  max-height: 40px;
+  max-width: 100%;
   object-fit: contain;
 }
 
-.header-daf-icon-donors-fund {
-  background: #22324a;
-  border-color: #34445d;
-}
-
-.header-daf-icon-donors-fund:hover,
-.header-daf-icon-donors-fund:focus-visible {
-  background: #2c3b53;
-  border-color: #41536d;
+.nav .header-daf-icon-donors-fund {
+  --daf-background: #22324a;
+  --daf-border: #22324a;
+  --daf-hover: #30445f;
+  --daf-ink: #d9e4f1;
 }
 
 .header-daf-icon-donors-fund img {
-  width: 118px;
+  width: 158px;
 }
 
-.header-daf-icon-ojc {
-  background: #f5f8ff;
-  border-color: #dbe6ff;
+.nav .header-daf-icon-pledger {
+  --daf-background: #fcf8f0;
+  --daf-border: #e8dbc3;
+  --daf-hover: #f6eedf;
+  --daf-ink: #78603b;
+}
+
+.header-daf-icon-pledger img {
+  width: 150px;
 }
 
 .header-daf-icon-ojc img {
-  width: 64px;
+  width: 78px;
+}
+
+.nav .header-daf-icon-matbia {
+  --daf-background: #f5f4fc;
+  --daf-border: #deddf0;
+  --daf-hover: #eeedf9;
+  --daf-ink: #44479d;
+}
+
+.header-daf-icon-matbia img {
+  height: auto;
+  width: 150px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav .header-daf-icon {
+    transition: none;
+    transform: none;
+  }
 }
 
 .header-donate-note {
@@ -241,8 +303,8 @@
   color: #66758a;
   font-size: .9rem;
   line-height: 1.5;
-  margin: .25rem 0 0;
-  padding: .85rem .85rem .1rem;
+  margin: 0;
+  padding: .85rem .25rem .1rem;
 }
 
 .header-donate-note strong {
@@ -306,7 +368,4 @@
     width: 76px;
   }
 
-  .header-daf-icon-donors-fund img {
-    width: 104px;
-  }
 }

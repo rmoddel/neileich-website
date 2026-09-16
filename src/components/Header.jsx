@@ -34,20 +34,29 @@ function Header() {
                 </a>
 
                 <section className="header-daf-section" aria-labelledby="header-daf-heading">
-                  <p id="header-daf-heading" className="header-daf-heading">DAF Giving: Donate with the links below:</p>
+                  <p id="header-daf-heading" className="header-daf-heading">Give through your donor-advised fund</p>
+                  <p className="header-daf-description">Choose your fund to continue.</p>
                   <div className="header-daf-icons">
                     <a className="header-daf-icon header-daf-icon-donors-fund" href="https://thedonorsfund.org/donate/NEILECH-p7711855057422424/264527675" target="_blank" rel="noreferrer" aria-label="Donate through The Donors Fund">
-                      <img src="/thedonorsfund.svg" alt="" />
+                      <img src="/thedonorsfund.svg" alt="The Donors Fund" />
+                    </a>
+
+                    <a className="header-daf-icon header-daf-icon-pledger" href="https://org.pledgercharitable.org/ChargeCard?ein=264527675A&camp=" target="_blank" rel="noreferrer" aria-label="Donate through Pledger">
+                      <img src="/pledgerlogo.png" alt="Pledger" />
                     </a>
 
                     <a className="header-daf-icon header-daf-icon-ojc" href="https://secure.ojccardpaymentsite.org/MQAAADYAAAAxAAAANAAAADgAAAA=" target="_blank" rel="noreferrer" aria-label="Donate through OJC">
                       <img src="https://secure.ojccardpaymentsite.org/images/logo.svg" alt="" />
                     </a>
+
+                    <a className="header-daf-icon header-daf-icon-matbia" href="https://app.matbia.org/d/00124253052" target="_blank" rel="noreferrer" aria-label="Donate through Matbia">
+                      <img src="/matbialogo.svg" alt="" />
+                    </a>
                   </div>
                 </section>
 
                 <p className="header-donate-note">
-                  Or by searching for Tax ID <strong>26-4527675</strong> and selecting <strong>Neileich</strong>.
+                  You can also search your fund for Tax ID <strong>26-4527675</strong> and select <strong>Neileich</strong>.
                 </p>
               </div>
             )}
