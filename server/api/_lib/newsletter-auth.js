@@ -10,12 +10,14 @@ const audience = 'atc-editor'
 const loginError = 'Invalid username or password.'
 
 function local(req) { return process.env.ATC_LOCAL_DEV === '1' && /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(req.headers.host || '') }
-function origin(req) {
-  if (local(req)) return `http://${req.headers.host}`
+function allowedOrigins(req) {
+  if (local(req)) return new Set([`http://${req.headers.host}`])
   if (!process.env.APP_URL) throw new Error('APP_URL is not configured')
   const configured = new URL(process.env.APP_URL)
   if (configured.protocol !== 'https:') throw new Error('APP_URL must use HTTPS')
-  return configured.origin
+  const alternateHost = configured.hostname.startsWith('www.') ? configured.hostname.slice(4) : `www.${configured.hostname}`
+  const port = configured.port ? `:${configured.port}` : ''
+  return new Set([configured.origin, `https://${alternateHost}${port}`])
 }
 function maxAgeSeconds() {
   const hours = Number(process.env.ATC_SESSION_MAX_AGE_HOURS || 12)
@@ -83,7 +85,9 @@ export async function requireSession(req, res) {
 }
 export function requireOrigin(req, res) {
   try {
-    if (req.headers.origin === origin(req)) return true
+    const requestHost = String(req.headers.host || '').toLowerCase()
+    const requestOrigin = req.headers.origin
+    if (typeof requestOrigin === 'string' && requestOrigin === `${local(req) ? 'http' : 'https'}://${requestHost}` && allowedOrigins(req).has(requestOrigin)) return true
   } catch { /* Missing or invalid origin configuration. */ }
   res.status(403).json({ error: 'Invalid request origin.' })
   return false

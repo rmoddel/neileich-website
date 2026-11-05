@@ -23,7 +23,7 @@ test('Friday identifier uses New York boundaries', () => {
 })
 
 test('bcrypt credentials, rate limit, session persistence, and logout', async t => {
-  const names = ['ATC_AUTH_USERNAME', 'ATC_AUTH_PASSWORD_HASH', 'ATC_AUTH_SESSION_SECRET', 'ATC_LOCAL_DEV']
+  const names = ['ATC_AUTH_USERNAME', 'ATC_AUTH_PASSWORD_HASH', 'ATC_AUTH_SESSION_SECRET', 'ATC_LOCAL_DEV', 'APP_URL']
   const previous = Object.fromEntries(names.map(name => [name, process.env[name]]))
   t.after(() => { for (const name of names) { if (previous[name] === undefined) delete process.env[name]; else process.env[name] = previous[name] } })
   process.env.ATC_AUTH_USERNAME = 'editor'
@@ -60,6 +60,16 @@ test('bcrypt credentials, rate limit, session persistence, and logout', async t 
   const csrf = response()
   assert.equal(requireOrigin({ headers: { host: 'localhost:5173', origin: 'https://attacker.example' } }, csrf), false)
   assert.equal(csrf.statusCode, 403)
+  process.env.ATC_LOCAL_DEV = '0'
+  process.env.APP_URL = 'https://neileich.org'
+  assert.equal(requireOrigin({ headers: { host: 'neileich.org', origin: 'https://neileich.org' } }, response()), true)
+  assert.equal(requireOrigin({ headers: { host: 'www.neileich.org', origin: 'https://www.neileich.org' } }, response()), true)
+  for (const headers of [
+    { host: 'www.neileich.org', origin: 'https://neileich.org' },
+    { host: 'www.neileich.org', origin: 'http://www.neileich.org' },
+    { host: 'www.neileich.org.evil.example', origin: 'https://www.neileich.org.evil.example' },
+    { host: 'www.neileich.org' },
+  ]) assert.equal(requireOrigin({ headers }, response()), false)
   const out = response()
   await revokeSession({ headers: { cookie, host: 'localhost:5173' } }, out, sql)
   assert.equal(await session({ headers: { cookie } }, sql), null)
