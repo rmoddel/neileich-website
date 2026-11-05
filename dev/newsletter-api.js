@@ -12,17 +12,18 @@ const handlers = {
   '/api/newsletter/draft': 'api/newsletter/draft.js',
   '/api/newsletter/approve': 'api/newsletter/approve.js',
   '/api/newsletter/shabbos': 'api/newsletter/shabbos.js',
+  '/api/newsletter/zmanim/upload': 'api/newsletter/zmanim/upload.js',
+  '/api/newsletter/zmanim/import': 'api/newsletter/zmanim/import.js',
+  '/api/newsletter/zmanim/confirm': 'api/newsletter/zmanim/confirm.js',
+  '/api/newsletter/zmanim/source': 'api/newsletter/zmanim/source.js',
 }
 
 function response(raw) {
-  return {
-    status(code) { raw.statusCode = code; return this },
-    setHeader(name, value) { raw.setHeader(name, value); return this },
-    json(value) { raw.setHeader('Content-Type', 'application/json; charset=utf-8'); raw.end(JSON.stringify(value)); return this },
-    send(value) { raw.end(value); return this },
-    redirect(code, location) { raw.statusCode = code; raw.setHeader('Location', location); raw.end(); return this },
-    end() { raw.end(); return this },
-  }
+  raw.status = function (code) { this.statusCode = code; return this }
+  raw.json = function (value) { this.setHeader('Content-Type', 'application/json; charset=utf-8'); this.end(JSON.stringify(value)); return this }
+  raw.send = function (value) { this.end(value); return this }
+  raw.redirect = function (code, location) { this.statusCode = code; this.setHeader('Location', location); this.end(); return this }
+  return raw
 }
 
 export function newsletterApiDevPlugin() {

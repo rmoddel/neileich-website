@@ -12,7 +12,7 @@ export async function getIssue(week, sql = newsletterDb()) {
     sql`select issue_week::text as issue_week,status,date_line,intro,approved_at,approved_by,sent_at,pdf_url,error from newsletter_issues where issue_week=${week}::date`,
     sql`select id::text as id,issue_week::text as issue_week,category,title,body,contact,event_date,price,flags,original_text,review_status,sort_order,processed_at,notes,version as revision from newsletter_announcements where issue_week=${week}::date order by sort_order,id`,
     sql`select snapshot,approved_at,approved_by from newsletter_published where issue_week=${week}::date`,
-    sql`select issue_week::text as issue_week,parsha_he,parsha_en,friday_date,shabbos_date,candle_lighting,friday_sunset,sof_zman_shema_gra,shabbos_ends,source,verification_status,notes,shacharis,sof_zman_shema_mga,shabbos_mincha,motzai_maariv,friday_mincha,friday_maariv,erev_shabbos_mincha from newsletter_shabbos where issue_week=${week}::date`,
+    sql`select issue_week::text as issue_week,parsha_he,parsha_en,friday_date,shabbos_date,candle_lighting,friday_sunset,sof_zman_shema_gra,shabbos_ends,source,verification_status,notes,shacharis,sof_zman_shema_mga,shabbos_mincha,motzai_maariv,friday_mincha,friday_maariv,erev_shabbos_mincha from newsletter_zmanim where issue_week=${week}::date`,
     sql`select category,print_order,usage from newsletter_categories where active=true order by print_order,category`,
   ])
   const snapshot = publishedRows[0]?.snapshot || null
@@ -28,7 +28,7 @@ export async function getIssue(week, sql = newsletterDb()) {
 }
 
 export async function listWeeks(sql = newsletterDb()) {
-  const rows = await sql`select distinct issue_week::text as issue_week from (select issue_week from newsletter_issues union select issue_week from newsletter_announcements union select issue_week from newsletter_shabbos union select issue_week from newsletter_incoming) weeks order by issue_week desc`
+  const rows = await sql`select distinct issue_week::text as issue_week from (select issue_week from newsletter_issues union select issue_week from newsletter_announcements union select issue_week from newsletter_zmanim union select issue_week from newsletter_incoming) weeks order by issue_week desc`
   return rows.map(row => row.issue_week).filter(validIssueWeek)
 }
 
@@ -42,6 +42,7 @@ export function validateApproval(issue) {
   const errors = []
   if (!issue.shabbos) errors.push('Shabbos information is missing')
   else if (issue.shabbos.verification_status !== 'VERIFIED') errors.push('Shabbos times are not verified')
+  else for (const field of ['parsha_he', 'candle_lighting', 'friday_sunset', 'shacharis', 'sof_zman_shema_mga', 'sof_zman_shema_gra', 'motzai_maariv']) if (!issue.shabbos[field]?.trim()) errors.push(`Shabbos ${field.replaceAll('_', ' ')} is missing`)
   for (const entry of issue.entries) {
     if (entry.review_status === 'NEEDS_REVIEW') errors.push(`${entry.title || entry.id}: needs review`)
     if (entry.review_status === 'READY' && !entry.body && !entry.title) errors.push(`${entry.id}: missing wording`)
@@ -72,6 +73,7 @@ export async function ingestSubmission(submission, sql = newsletterDb()) {
 export async function saveShabbos(week, data, sql = newsletterDb()) {
   if (!validIssueWeek(week) || !data || typeof data !== 'object' || Array.isArray(data)) throw new Error('Invalid Shabbos data')
   if (!data.parsha_he?.trim() || !data.parsha_en?.trim() || !data.source?.trim() || !['NEEDS_REVIEW', 'VERIFIED'].includes(data.verification_status)) throw new Error('Parsha, source, and verification status are required')
+  if (data.verification_status === 'VERIFIED' && ['candle_lighting', 'friday_sunset', 'shacharis', 'sof_zman_shema_mga', 'sof_zman_shema_gra', 'motzai_maariv'].some(field => !data[field]?.trim())) throw new Error('Required official zmanim must be filled before verification')
   await sql`select save_newsletter_shabbos(${week}::date,${JSON.stringify(data)}::jsonb)`
   return getIssue(week, sql)
 }

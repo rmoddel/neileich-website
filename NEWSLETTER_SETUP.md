@@ -1,40 +1,50 @@
-# Around the Commons editor
+# Around the Commons
 
-The editor is at `/around-the-commons`; unauthenticated visitors go to `/around-the-commons/login`. `/atc` redirects to the editor. One administrator signs in with a username and password. Google Sheets remains the content source; Google OAuth is not used.
+The editor lives at `/around-the-commons`, its login at `/around-the-commons/login`, and the Zmanim upload area at `/around-the-commons/zmanim`. `/atc` redirects to the editor. The Vite site and Vercel API functions use the existing Neon database. Google Sheets and Google OAuth are not used by the site. Apps Script can continue receiving Gmail/Voice submissions and calling Gemini upstream, then forward each submission to the ingestion API.
 
-## Set up the spreadsheet service account
+## Database and deployment
 
-1. In Google Cloud, open **APIs & Services → Library**, select **Google Sheets API**, and click **Enable**.
-2. Open **IAM & Admin → Service Accounts**, create an `atc-sheets` service account, and copy its email address. No Google Workspace domain-wide delegation or Cloud IAM admin role is needed.
-3. Open that service account's **Keys → Add key → Create new key → JSON**. Keep the downloaded JSON private. Its `client_email` is `GOOGLE_SERVICE_ACCOUNT_EMAIL`, and its `private_key` is `GOOGLE_PRIVATE_KEY`.
-4. Open the Around the Commons spreadsheet, click **Share**, add only the service account email as **Editor**, and disable notification. Copy the ID between `/d/` and `/edit` in the sheet URL into `GOOGLE_SHEETS_SPREADSHEET_ID`.
+1. In the **existing** Neon database, run [db/around_the_commons.sql](db/around_the_commons.sql). It creates only newsletter tables/functions, reuses `newsletter_approval_locks`, seeds the existing category list and the already verified 2026-11-06 Bais Medrash times, and never replaces an existing row. Do not run against production before reviewing the target database and migration. `newsletter_zmanim` is the weekly source; `newsletter_zmanim_imports` keeps private chart references, extracted text, raw model records, and processing status. Approved issue snapshots remain immutable in `newsletter_published`.
+2. In the **existing** Vercel project, set the server-only variables in `.env.example`: existing `DATABASE_URL` and `APP_URL`, plus `ATC_AUTH_USERNAME`, `ATC_AUTH_PASSWORD_HASH`, `ATC_AUTH_SESSION_SECRET`, `ATC_SESSION_MAX_AGE_HOURS`, `ATC_INGEST_TOKEN`, `NEWSLETTER_TIMEZONE`, `GEMINI_API_KEY`, and optional `ATC_GEMINI_MODEL` (default `gemini-3.8-flash`). `APP_URL` must be the exact HTTPS origin, normally `https://neileich.org`; timezone is `America/New_York`. Never use a `VITE_` prefix for these secrets. Production deployment is a separate action.
+3. Create a **private** Vercel Blob store connected to the same project and environments. It supplies `BLOB_READ_WRITE_TOKEN`. The PDFs are stored there, never in Neon or Git. Only the authenticated `/api/newsletter/zmanim/source` function streams them back. The initial server upload limit is 2.8 MB because Vercel Functions have a 4.5 MB request-body limit and the JSON API base64-encodes the PDF. Larger charts require a direct upload flow.
 
-## Set up the administrator login
+## Administrator login
 
-1. Choose a private administrator username for `ATC_AUTH_USERNAME`.
-2. Generate a bcrypt hash locally. In this project's **zsh** terminal, run:
+Choose a private username. Generate a bcrypt password hash locally in zsh:
 
-   ```zsh
-   read -s "ATC_PASSWORD?New ATC password: "; print
-   print -rn -- "$ATC_PASSWORD" | node -e 'const b=require("bcryptjs");let s="";process.stdin.on("data",d=>s+=d);process.stdin.on("end",()=>console.log(b.hashSync(s,12)))'
-   unset ATC_PASSWORD
-   ```
+```zsh
+read -s "ATC_PASSWORD?New ATC password: "; print
+print -rn -- "$ATC_PASSWORD" | node -e 'const b=require("bcryptjs");let s="";process.stdin.on("data",d=>s+=d);process.stdin.on("end",()=>console.log(b.hashSync(s,12)))'
+unset ATC_PASSWORD
+```
 
-   Copy only the resulting hash into `ATC_AUTH_PASSWORD_HASH`. The password is not stored in `.env` or in the repository.
-3. Run `openssl rand -base64 48` and save its output as `ATC_AUTH_SESSION_SECRET`. Use a unique secret; changing it invalidates existing sessions.
-4. Set `ATC_SESSION_MAX_AGE_HOURS=12`, or an integer from 1 to 168. The cookie persists across refreshes until it expires or the user signs out. Sign-out deletes the server-side session record.
-5. In the existing Neon project, open the SQL Editor for the database referenced by `DATABASE_URL` and run the contents of `db/newsletter_approval_locks.sql`. This creates approval locks, login rate-limit counters, and revocable sessions. Login allows up to five attempts per IP and 30 total attempts per 15-minute window.
+Set only the result as `ATC_AUTH_PASSWORD_HASH`; do not store the password. Run `openssl rand -base64 48` separately for `ATC_AUTH_SESSION_SECRET` and `ATC_INGEST_TOKEN`. Set `ATC_SESSION_MAX_AGE_HOURS=12` (allowed 1–168). Sessions are signed, HttpOnly, Secure, SameSite cookies with server-side revocation. Sign-in is limited to five attempts per IP and 30 total per 15 minutes. Run `npm run dev` with local values in an ignored `.env.local` file; Vite serves the API handlers locally.
 
-## Configure Vercel
+## Apps Script ingestion
 
-In the **existing** Neileich Vercel project, open **Settings → Environment Variables**. Add the server-only variables from `.env.example`: `ATC_AUTH_USERNAME`, `ATC_AUTH_PASSWORD_HASH`, `ATC_AUTH_SESSION_SECRET`, `ATC_SESSION_MAX_AGE_HOURS`, `GOOGLE_SHEETS_SPREADSHEET_ID`, `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_PRIVATE_KEY`, and `NEWSLETTER_TIMEZONE=America/New_York`. Keep the existing `DATABASE_URL` and `APP_URL=https://neileich.org`. Set these in the environments where the editor will run. Vercel applies changed variables only to new deployments. Never use a `VITE_` prefix for these credentials.
+Send `POST https://neileich.org/api/around-the-commons/ingest` with `Authorization: Bearer <ATC_INGEST_TOKEN>`, `Content-Type: application/json`, and a stable source ID. Example body:
 
-For local testing, put the same variables in the ignored `.env.local` file and run `npm run dev`. Vite serves the newsletter API handlers in development. No Google OAuth client or redirect URI is needed.
+```json
+{
+  "source": "gmail",
+  "sourceId": "gmail-message-id",
+  "receivedAt": "2026-11-05T17:00:00Z",
+  "sender": "example@example.com",
+  "rawText": "Original submission",
+  "cleaned": { "category": "Community Updates", "title": "", "body": "Gemini-cleaned wording", "flags": "", "notes": "" }
+}
+```
 
-## Newsletter data and print
+`issueWeek` is optional; if supplied it must match the Friday calculated from `receivedAt` in New York. The raw message is preserved. Duplicate `(source, sourceId)` calls are idempotent. Machine-cleaned entries enter `NEEDS_REVIEW` and cannot be published until an editor marks them `READY`. Keep the token in Apps Script properties, not in client code or source control.
 
-The source spreadsheet has `Incoming`, `Cleaned`, `Issues`, `Published`, `Categories`, and `Shabbos` tabs. Header-based mapping is in `api/_lib/newsletter-sheets.js`; tab names are in `api/_lib/newsletter-config.js`. `Incoming` is never changed. Approval adds a `snapshot_json` column to `Published` if needed and freezes the printed data. The current 2026-11-06 Shabbos row is verified; its blank `shabbos_ends` is not substituted with another time.
+## Zmanim chart workflow
 
-The masthead currently uses `/logo-english.png`. When the Around the Commons logo is supplied, put it in `public/` and update the image path in `src/pages/AroundTheCommons.jsx`.
+Upload the official Bais Medrash seasonal PDF in the authenticated Zmanim area. PDF.js extracts embedded text and positioned table rows first; Gemini then interprets the PDF and those rows into structured records. The system retains the original extracted records and PDF source for audit. If the chart does not establish the calendar year, Friday dates stay blank. An administrator must enter actual dates, correct all times, mark each included row **Reviewed**, and explicitly confirm. A row can be **Skipped**; skipped rows remain in the import audit. Confirmation saves included rows to `newsletter_zmanim` in one database transaction. It refuses to replace an existing verified week or an approved issue; an existing verified row can only be changed through the newsletter's Shabbos editor with a separate explicit confirmation. Motzai Shabbos Maariv never fills Havdalah automatically.
 
-Run `npm test`, `npm run lint`, and `npm run build`. Before production deployment, test login, invalid credentials, rate limiting, logout, authenticated sheet reads, approval, and a multipage Hebrew print preview. Production deployment remains a separate action.
+The newsletter loads the corresponding Friday's verified row. Its Shabbos editor can make manual corrections before approval. Approval checks required times and freezes a copy in `newsletter_published`; later edits do not change the approved print layout. Browser Print / Save PDF uses the same HTML layout.
+
+The known 2026-11-06 row contains **פרשת חיי שרה**, candle lighting 4:30 PM, sunset 4:48 PM, Shacharis 7:30 / 8:15 AM, Shema M״A / GR״A 8:31 / 9:07 AM, and Motzai Shabbos Maariv 5:48 / 6:00 PM. No Havdalah time is inferred. The supplied original PDF is kept outside Git; the local test reads it from the supplied Desktop path when available.
+
+## Checks
+
+Run `npm test`, `npm run lint`, and `npm run build`. Run the SQL migration and `tests/db/zmanim.sql` against a disposable PostgreSQL instance before applying it to Neon. Review a multi-page Hebrew print preview in a browser. Production migration, environment changes, and deployment have not been performed by the implementation.

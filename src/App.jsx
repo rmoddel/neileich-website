@@ -12,6 +12,7 @@ import ProgramsPage from './pages/ProgramsPage'
 import Donate from './pages/Donate'
 import AroundTheCommons from './pages/AroundTheCommons'
 import AroundTheCommonsLogin from './pages/AroundTheCommonsLogin'
+import AtcZmanim from './pages/AtcZmanim'
 import './App.css'
 
 function App() {
@@ -31,6 +32,7 @@ function App() {
           <Route path="/donate" element={<Donate />} />
           <Route path="/around-the-commons/login" element={<AroundTheCommonsLogin />} />
           <Route path="/around-the-commons" element={<AroundTheCommons />} />
+          <Route path="/around-the-commons/zmanim" element={<AtcZmanim />} />
           <Route path="/atc" element={<Navigate to="/around-the-commons" replace />} />
         </Routes>
       </main>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 import './AroundTheCommons.css'
 
 const defaults = ['Neileich Updates', 'Mazel Tov', 'Community Updates', 'Events & Shiurim', 'Classifieds', 'Looking For', 'Selling / For Rent', 'Lost & Found', 'Other community notices']
@@ -29,7 +29,7 @@ function Newsletter({ issue, entries, selected, onSelect }) {
     const ai = sectionPriority.indexOf(a.name), bi = sectionPriority.indexOf(b.name)
     return (ai < 0 ? 100 + names.indexOf(a.name) : ai) - (bi < 0 ? 100 + names.indexOf(b.name) : bi)
   })
-  const shabbos = issue.shabbos
+  const shabbos = issue.shabbos?.verification_status === 'VERIFIED' ? issue.shabbos : null
   return <article className="atc-paper" aria-label="Printable newsletter">
     <header className="atc-masthead">
       <img src="/logo-english.png" alt="Neileich" />
@@ -38,7 +38,7 @@ function Newsletter({ issue, entries, selected, onSelect }) {
     {shabbos && <div className="atc-shabbos" dir="rtl">
       <strong>{shabbos.parsha_he} <bdi>· {shabbos.parsha_en}</bdi></strong>
       {[
-        ['הדלקת נרות', shabbos.candle_lighting], ['מנחה ערב שבת', shabbos.friday_mincha], ['שחרית', shabbos.shacharis], ['סוף זמן קריאת שמע', shabbos.sof_zman_shema_gra], ['מנחה שבת', shabbos.shabbos_mincha], ['מעריב מוצאי שבת', shabbos.motzai_maariv],
+        ['הדלקת נרות', shabbos.candle_lighting], ['שקיעה', shabbos.friday_sunset], ['מנחה ערב שבת', shabbos.friday_mincha], ['שחרית', shabbos.shacharis], ['ס״ז ק״ש מ״א', shabbos.sof_zman_shema_mga], ['ס״ז ק״ש גר״א', shabbos.sof_zman_shema_gra], ['מנחה שבת', shabbos.shabbos_mincha], ['מעריב מוצאי שבת', shabbos.motzai_maariv], ['הבדלה', shabbos.shabbos_ends],
       ].filter(([, value]) => value).map(([label, value]) => <span key={label}><em>{label}</em> <bdi>{value}</bdi></span>)}
     </div>}
     <div className="atc-columns" dir="rtl">
@@ -93,7 +93,7 @@ export default function AroundTheCommons() {
   }
   async function save() {
     setBusy(true); setMessage('')
-    try { const data = await api('draft', { method: 'POST', body: JSON.stringify({ week, changes: entries }) }); setIssue(old => ({ ...old, ...data })); setEntries(data.entries); setSelected(null); setDirty(false); setMessage('Draft saved to Google Sheets.') }
+    try { const data = await api('draft', { method: 'POST', body: JSON.stringify({ week, changes: entries }) }); setIssue(old => ({ ...old, ...data })); setEntries(data.entries); setSelected(null); setDirty(false); setMessage('Draft saved to Neon.') }
     catch (error) { setMessage(error.message) }
     finally { setBusy(false) }
   }
@@ -107,8 +107,10 @@ export default function AroundTheCommons() {
     finally { setBusy(false) }
   }
   async function saveShabbosDetails() {
+    const replaceVerified = issue?.shabbos?.verification_status === 'VERIFIED'
+    if (replaceVerified && !window.confirm(`Replace verified zmanim for ${week}? This changes the working issue but not an approved snapshot.`)) return
     setBusy(true); setMessage('')
-    try { const data = await api('shabbos', { method: 'POST', body: JSON.stringify({ week, shabbos: shabbosDraft }) }); setIssue(old => ({ ...old, shabbos: data.shabbos })); setShabbosDraft(data.shabbos); setShabbosDirty(false); setMessage('Shabbos details saved.') }
+    try { const data = await api('shabbos', { method: 'POST', body: JSON.stringify({ week, shabbos: { ...shabbosDraft, replace_verified: replaceVerified } }) }); setIssue(old => ({ ...old, shabbos: data.shabbos })); setShabbosDraft(data.shabbos); setShabbosDirty(false); setMessage('Shabbos details saved.') }
     catch (error) { setMessage(error.message) }
     finally { setBusy(false) }
   }
@@ -119,7 +121,7 @@ export default function AroundTheCommons() {
   return <div className="atc-shell">
     <div className="atc-toolbar"><div><p>AROUND THE COMMONS · EDITOR</p><h1>{week || 'Newsletter'}</h1><span>{issue?.issue?.status || 'DRAFT'} · {user.username}</span></div>
       <div className="atc-actions"><label>Issue <select value={week} disabled={busy} onChange={event => { if ((dirty || shabbosDirty) && !window.confirm('Discard unsaved changes?')) return; load(event.target.value) }}>{[...new Set([week, ...(issue?.weeks || [])])].filter(Boolean).map(value => <option key={value}>{value}</option>)}</select></label>
-      <button onClick={add} disabled={busy || publishedView}>Add announcement</button><button onClick={save} disabled={busy || !dirty || publishedView}>Save Draft</button><button onClick={approve} disabled={busy || dirty || !user.approver || issue?.issue?.status === 'APPROVED'}>Approve Newsletter</button><button onClick={() => window.print()} disabled={!issue}>Print / Save PDF</button>
+      <Link className="atc-button" to="/around-the-commons/zmanim">Zmanim</Link><button onClick={add} disabled={busy || publishedView}>Add announcement</button><button onClick={save} disabled={busy || !dirty || publishedView}>Save Draft</button><button onClick={approve} disabled={busy || dirty || !user.approver || issue?.issue?.status === 'APPROVED'}>Approve Newsletter</button><button onClick={() => window.print()} disabled={!issue}>Print / Save PDF</button>
       {issue?.published?.length > 0 && <button onClick={() => setPublishedView(value => !value)}>{publishedView ? 'View working sheet' : 'View approved edition'}</button>}
       <button onClick={async () => { try { const response = await fetch('/api/around-the-commons/auth/logout', { method: 'POST', credentials: 'same-origin' }); if (!response.ok) throw new Error('Sign-out is temporarily unavailable.'); navigate('/around-the-commons/login', { replace: true }) } catch (error) { setMessage(error.message) } }}>Sign out</button></div></div>
     {message && <p className="atc-message" role="status">{message}</p>}

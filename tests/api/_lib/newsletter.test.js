@@ -52,7 +52,10 @@ test('bcrypt credentials, rate limit, session persistence, and logout', async t 
   assert.match(res.headers['Set-Cookie'], /SameSite=Strict/)
   const cookie = res.headers['Set-Cookie'].split(';')[0]
   assert.deepEqual(await session({ headers: { cookie } }, sql), { username: 'editor', approver: true })
-  const tampered = `${cookie.slice(0, -1)}${cookie.endsWith('a') ? 'b' : 'a'}`
+  const [cookieName, token] = cookie.split('=')
+  const tokenParts = token.split('.')
+  tokenParts[2] = `${tokenParts[2][0] === 'a' ? 'b' : 'a'}${tokenParts[2].slice(1)}`
+  const tampered = `${cookieName}=${tokenParts.join('.')}`
   assert.equal(await session({ headers: { cookie: tampered } }, sql), null)
   const csrf = response()
   assert.equal(requireOrigin({ headers: { host: 'localhost:5173', origin: 'https://attacker.example' } }, csrf), false)
@@ -67,7 +70,7 @@ test('bcrypt credentials, rate limit, session persistence, and logout', async t 
 })
 
 test('approval blocks unresolved editorial flags and unverified Shabbos data', () => {
-  const issue = { week: '2026-11-06', shabbos: { verification_status: 'VERIFIED' }, entries: [{ id: '1', title: 'שלום', body: 'Community note', review_status: 'READY', flags: '' }] }
+  const issue = { week: '2026-11-06', shabbos: { verification_status: 'VERIFIED', parsha_he: 'חיי שרה', candle_lighting: '4:30 PM', friday_sunset: '4:48 PM', shacharis: '7:30 / 8:15 AM', sof_zman_shema_mga: '8:31 AM', sof_zman_shema_gra: '9:07 AM', motzai_maariv: '5:48 / 6:00 PM' }, entries: [{ id: '1', title: 'שלום', body: 'Community note', review_status: 'READY', flags: '' }] }
   assert.deepEqual(validateApproval(issue), [])
   issue.entries[0].flags = 'Check date'
   assert.equal(validateApproval(issue).length, 1)
@@ -93,7 +96,7 @@ test('Neon data layer saves drafts and returns immutable approved snapshots', as
   let approved = false
   let entry = { id: '11111111-1111-4111-8111-111111111111', issue_week: '2026-11-06', category: 'Neileich Updates', title: 'שלום', body: 'Initial', contact: '', event_date: '', price: '', flags: '', original_text: 'Raw', review_status: 'READY', sort_order: 1, notes: '', revision: 1 }
   let snapshot = null
-  const shabbos = { issue_week: '2026-11-06', parsha_he: 'חיי שרה', parsha_en: 'Chayei Sara', verification_status: 'VERIFIED' }
+  const shabbos = { issue_week: '2026-11-06', parsha_he: 'חיי שרה', parsha_en: 'Chayei Sara', verification_status: 'VERIFIED', candle_lighting: '4:30 PM', friday_sunset: '4:48 PM', shacharis: '7:30 / 8:15 AM', sof_zman_shema_mga: '8:31 AM', sof_zman_shema_gra: '9:07 AM', motzai_maariv: '5:48 / 6:00 PM' }
   const categories = [{ category: 'Neileich Updates', print_order: 1 }]
   const sql = (strings, ...values) => {
     const query = strings.join('?')
