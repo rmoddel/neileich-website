@@ -21,6 +21,14 @@ const routeMeta = {
     title: 'Parnas Hayom | Neileich Lakewood Commons',
     description: 'Sponsor a meaningful day of Neileich programming and share a dedication in support of the community.',
   },
+  '/around-the-commons': {
+    title: 'Around the Commons | Neileich Lakewood Commons',
+    description: 'The Around the Commons newsletter editor for authorized administrators.',
+  },
+  '/around-the-commons/login': {
+    title: 'Sign in to Around the Commons | Neileich',
+    description: 'Administrator sign-in for the Around the Commons newsletter editor.',
+  },
   '/donate': {
     title: 'Donate | Neileich Lakewood Commons',
     description: 'Support Neileich with a secure donation to help children and families thrive in the Lakewood Commons community.',

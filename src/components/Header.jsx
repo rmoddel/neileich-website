@@ -16,6 +16,7 @@ function Header() {
           <Link to="/" onClick={() => setOpenMenu(null)}>Home</Link>
           <Link to="/about" onClick={() => setOpenMenu(null)}>Our Mission</Link>
           <Link to="/programs" onClick={() => setOpenMenu(null)}>Our Programs</Link>
+          <Link to="/around-the-commons" onClick={() => setOpenMenu(null)}>ATC Newsletter</Link>
           <Link to="/parnas-hayom" onClick={() => setOpenMenu(null)}>Parnas Hayom</Link>
           <Link to="/contact" onClick={() => setOpenMenu(null)}>Contact</Link>
           <div className="nav-menu donate-menu">
