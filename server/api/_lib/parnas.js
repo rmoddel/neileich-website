@@ -79,8 +79,8 @@ function pdfAttachment(filename, pdf) {
 function loadPdfFonts() {
   if (!pdfFonts) {
     pdfFonts = {
-      regular: readFileSync(new URL('../../server-assets/fonts/NotoSansHebrew-Regular.ttf', import.meta.url)).toString('base64'),
-      bold: readFileSync(new URL('../../server-assets/fonts/NotoSansHebrew-Bold.ttf', import.meta.url)).toString('base64'),
+      regular: readFileSync(new URL('../../../server-assets/fonts/NotoSansHebrew-Regular.ttf', import.meta.url)).toString('base64'),
+      bold: readFileSync(new URL('../../../server-assets/fonts/NotoSansHebrew-Bold.ttf', import.meta.url)).toString('base64'),
     }
   }
   return pdfFonts
@@ -98,7 +98,7 @@ function registerPdfFonts(pdf) {
 function loadLogoDataUri() {
   if (logoDataUri !== undefined) return logoDataUri
   try {
-    logoDataUri = `data:image/png;base64,${readFileSync(new URL('../../public/logo-english.png', import.meta.url)).toString('base64')}`
+    logoDataUri = `data:image/png;base64,${readFileSync(new URL('../../../public/logo-english.png', import.meta.url)).toString('base64')}`
   } catch (error) {
     console.error('Plaque PDF logo unavailable', error)
     logoDataUri = null

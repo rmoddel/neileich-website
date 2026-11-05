@@ -7,6 +7,28 @@
     }
   ],
   "rewrites": [
+    { "source": "/api/around-the-commons/auth/login", "destination": "/api/atc?endpoint=login" },
+    { "source": "/api/around-the-commons/auth/logout", "destination": "/api/atc?endpoint=logout" },
+    { "source": "/api/around-the-commons/ingest", "destination": "/api/atc?endpoint=ingest" },
+    { "source": "/api/newsletter/session", "destination": "/api/atc?endpoint=session" },
+    { "source": "/api/newsletter/issue", "destination": "/api/atc?endpoint=issue" },
+    { "source": "/api/newsletter/draft", "destination": "/api/atc?endpoint=draft" },
+    { "source": "/api/newsletter/approve", "destination": "/api/atc?endpoint=approve" },
+    { "source": "/api/newsletter/shabbos", "destination": "/api/atc?endpoint=shabbos" },
+    { "source": "/api/newsletter/zmanim/upload", "destination": "/api/atc?endpoint=zmanim-upload" },
+    { "source": "/api/newsletter/zmanim/import", "destination": "/api/atc?endpoint=zmanim-import" },
+    { "source": "/api/newsletter/zmanim/confirm", "destination": "/api/atc?endpoint=zmanim-confirm" },
+    { "source": "/api/newsletter/zmanim/source", "destination": "/api/atc?endpoint=zmanim-source" },
+    { "source": "/api/donations/checkout", "destination": "/api/donations/router?endpoint=checkout" },
+    { "source": "/api/donations/status", "destination": "/api/donations/router?endpoint=status" },
+    { "source": "/api/donations/resend-receipt", "destination": "/api/donations/router?endpoint=resend-receipt" },
+    { "source": "/api/parnas-hayom/availability", "destination": "/api/parnas-hayom/router?endpoint=availability" },
+    { "source": "/api/parnas-hayom/checkout", "destination": "/api/parnas-hayom/router?endpoint=checkout" },
+    { "source": "/api/parnas-hayom/email-diagnostics", "destination": "/api/parnas-hayom/router?endpoint=email-diagnostics" },
+    { "source": "/api/parnas-hayom/resend-receipt", "destination": "/api/parnas-hayom/router?endpoint=resend-receipt" },
+    { "source": "/api/parnas-hayom/status", "destination": "/api/parnas-hayom/router?endpoint=status" },
+    { "source": "/api/parnas-hayom/types", "destination": "/api/parnas-hayom/router?endpoint=types" },
+    { "source": "/api/parnas-hayom/verify-override", "destination": "/api/parnas-hayom/router?endpoint=verify-override" },
     {
       "source": "/(.*)",
       "destination": "/index.html"

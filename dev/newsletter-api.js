@@ -4,18 +4,18 @@ import { Buffer } from 'node:buffer'
 import process from 'node:process'
 
 const handlers = {
-  '/api/around-the-commons/auth/login': 'api/around-the-commons/auth/login.js',
-  '/api/around-the-commons/auth/logout': 'api/around-the-commons/auth/logout.js',
-  '/api/around-the-commons/ingest': 'api/around-the-commons/ingest.js',
-  '/api/newsletter/session': 'api/newsletter/session.js',
-  '/api/newsletter/issue': 'api/newsletter/issue.js',
-  '/api/newsletter/draft': 'api/newsletter/draft.js',
-  '/api/newsletter/approve': 'api/newsletter/approve.js',
-  '/api/newsletter/shabbos': 'api/newsletter/shabbos.js',
-  '/api/newsletter/zmanim/upload': 'api/newsletter/zmanim/upload.js',
-  '/api/newsletter/zmanim/import': 'api/newsletter/zmanim/import.js',
-  '/api/newsletter/zmanim/confirm': 'api/newsletter/zmanim/confirm.js',
-  '/api/newsletter/zmanim/source': 'api/newsletter/zmanim/source.js',
+  '/api/around-the-commons/auth/login': 'server/api/around-the-commons/auth/login.js',
+  '/api/around-the-commons/auth/logout': 'server/api/around-the-commons/auth/logout.js',
+  '/api/around-the-commons/ingest': 'server/api/around-the-commons/ingest.js',
+  '/api/newsletter/session': 'server/api/newsletter/session.js',
+  '/api/newsletter/issue': 'server/api/newsletter/issue.js',
+  '/api/newsletter/draft': 'server/api/newsletter/draft.js',
+  '/api/newsletter/approve': 'server/api/newsletter/approve.js',
+  '/api/newsletter/shabbos': 'server/api/newsletter/shabbos.js',
+  '/api/newsletter/zmanim/upload': 'server/api/newsletter/zmanim/upload.js',
+  '/api/newsletter/zmanim/import': 'server/api/newsletter/zmanim/import.js',
+  '/api/newsletter/zmanim/confirm': 'server/api/newsletter/zmanim/confirm.js',
+  '/api/newsletter/zmanim/source': 'server/api/newsletter/zmanim/source.js',
 }
 
 function response(raw) {

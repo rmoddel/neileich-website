@@ -1,11 +1,11 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { access, readFile } from 'node:fs/promises'
-import { extractEmbeddedChart, interpretChart, normalizeExtraction, uploadChart, validateReviewedRecords } from '../../../api/_lib/newsletter-zmanim.js'
-import uploadHandler from '../../../api/newsletter/zmanim/upload.js'
-import importHandler from '../../../api/newsletter/zmanim/import.js'
-import confirmHandler from '../../../api/newsletter/zmanim/confirm.js'
-import sourceHandler from '../../../api/newsletter/zmanim/source.js'
+import { extractEmbeddedChart, interpretChart, normalizeExtraction, uploadChart, validateReviewedRecords } from '../../../server/api/_lib/newsletter-zmanim.js'
+import uploadHandler from '../../../server/api/newsletter/zmanim/upload.js'
+import importHandler from '../../../server/api/newsletter/zmanim/import.js'
+import confirmHandler from '../../../server/api/newsletter/zmanim/confirm.js'
+import sourceHandler from '../../../server/api/newsletter/zmanim/source.js'
 
 const chart = '/Users/rmoddel/Desktop/Zmanim Chart · Bais Medrash of Lakewood Commons.pdf'
 const chartAvailable = await access(chart).then(() => true, () => false)

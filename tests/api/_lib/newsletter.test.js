@@ -1,12 +1,12 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { getCurrentIssueWeek, validIssueWeek } from '../../../api/_lib/newsletter-config.js'
-import { authenticate, requireOrigin, revokeSession, session, verifyCredentials } from '../../../api/_lib/newsletter-auth.js'
+import { getCurrentIssueWeek, validIssueWeek } from '../../../server/api/_lib/newsletter-config.js'
+import { authenticate, requireOrigin, revokeSession, session, verifyCredentials } from '../../../server/api/_lib/newsletter-auth.js'
 import bcrypt from 'bcryptjs'
-import { approveIssue, getIssue, ingestSubmission, saveDraft, validateApproval } from '../../../api/_lib/newsletter-db.js'
-import issueHandler from '../../../api/newsletter/issue.js'
-import draftHandler from '../../../api/newsletter/draft.js'
-import approveHandler from '../../../api/newsletter/approve.js'
+import { approveIssue, getIssue, ingestSubmission, saveDraft, validateApproval } from '../../../server/api/_lib/newsletter-db.js'
+import issueHandler from '../../../server/api/newsletter/issue.js'
+import draftHandler from '../../../server/api/newsletter/draft.js'
+import approveHandler from '../../../server/api/newsletter/approve.js'
 
 function response() {
   return { statusCode: 200, headers: {}, setHeader(name, value) { this.headers[name] = value; return this }, status(code) { this.statusCode = code; return this }, json(body) { this.body = body; return this }, end() { return this } }
