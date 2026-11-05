@@ -10,15 +10,13 @@ The editor lives at `/around-the-commons`, its login at `/around-the-commons/log
 
 ## Administrator login
 
-Choose a private username. Generate a bcrypt password hash locally in zsh:
+Choose a private username. From the project directory, generate a bcrypt password hash with a twice-entered, hidden password:
 
 ```zsh
-read -s "ATC_PASSWORD?New ATC password: "; print
-print -rn -- "$ATC_PASSWORD" | node -e 'const b=require("bcryptjs");let s="";process.stdin.on("data",d=>s+=d);process.stdin.on("end",()=>console.log(b.hashSync(s,12)))'
-unset ATC_PASSWORD
+zsh scripts/atc-hash-password.zsh
 ```
 
-Set only the result as `ATC_AUTH_PASSWORD_HASH`; do not store the password. Run `openssl rand -base64 48` separately for `ATC_AUTH_SESSION_SECRET` and `ATC_INGEST_TOKEN`. Set `ATC_SESSION_MAX_AGE_HOURS=12` (allowed 1–168). Sessions are signed, HttpOnly, Secure, SameSite cookies with server-side revocation. Sign-in is limited to five attempts per IP and 30 total per 15 minutes. Run `npm run dev` with local values in an ignored `.env.local` file; Vite serves the API handlers locally.
+Set only the resulting 60-character hash as `ATC_AUTH_PASSWORD_HASH` in Vercel, without quotes or spaces; do not store the password. Ensure `ATC_AUTH_USERNAME` exactly matches the username entered at login. Changing a Vercel environment variable requires a new deployment before the live site uses it. Run `openssl rand -base64 48` separately for `ATC_AUTH_SESSION_SECRET` and `ATC_INGEST_TOKEN`. Set `ATC_SESSION_MAX_AGE_HOURS=12` (allowed 1–168). Sessions are signed, HttpOnly, Secure, SameSite cookies with server-side revocation. Sign-in is limited to five attempts per IP and 30 total attempts per 15-minute window. Run `npm run dev` with local values in an ignored `.env.local` file; Vite serves the API handlers locally.
 
 ## Apps Script ingestion
 

@@ -36,7 +36,20 @@ function db() {
 function credentials() {
   const username = process.env.ATC_AUTH_USERNAME
   const hash = process.env.ATC_AUTH_PASSWORD_HASH
-  if (!username || !/^\$2[aby]\$(1[2-9]|2[0-9]|3[01])\$/.test(hash || '')) throw new Error('ATC administrator credentials are not configured with a bcrypt cost of at least 12')
+  const hashMatchesBcryptCost12Plus = /^\$2[aby]\$(1[2-9]|2[0-9]|3[01])\$/.test(hash || '')
+  console.info('ATC auth credential configuration diagnostics', {
+    usernameExistsAndNonempty: Boolean(username),
+    hashExists: typeof hash === 'string',
+    hashCharacterLength: typeof hash === 'string' ? hash.length : null,
+    hashMatchesBcryptCost12Plus,
+    hashHasLeadingWhitespace: typeof hash === 'string' && /^\s/.test(hash),
+    hashHasTrailingWhitespace: typeof hash === 'string' && /\s$/.test(hash),
+    hashHasWrappingQuotes: typeof hash === 'string' && hash.length >= 2 && (
+      (hash[0] === '"' && hash.at(-1) === '"') ||
+      (hash[0] === "'" && hash.at(-1) === "'")
+    ),
+  })
+  if (!username || !hashMatchesBcryptCost12Plus) throw new Error('ATC administrator credentials are not configured with a bcrypt cost of at least 12')
   return { username, hash }
 }
 function cookieOptions(req, maxAge) {
