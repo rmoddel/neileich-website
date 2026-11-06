@@ -25,14 +25,18 @@ function FeaturedSection({ section, selected, onSelect, sectionRef }) {
   if (!section) return null
   return <section className="atc-featured" ref={sectionRef} aria-label="Neileich Updates">
     <h2>Neileich Updates</h2>
-    <div className="atc-featured-columns" dir="rtl">{section.entries.map((entry, index) => {
-      const group = section.subgroups?.[index]
-      const showGroup = group && (index === 0 || group !== section.subgroups[index - 1])
-      return <div className="atc-featured-item" key={entry.id || index} dir="ltr">
-        {showGroup && <h3 className="atc-subheading">{group}</h3>}
-        <Announcement entry={entry} selected={selected} onSelect={onSelect} />
-      </div>
-    })}</div>
+    {section.entries.length === 0 ? (
+      <div className="atc-empty-section" aria-label="No Neileich Updates this week" />
+    ) : (
+      <div className="atc-featured-columns" dir="rtl">{section.entries.map((entry, index) => {
+        const group = section.subgroups?.[index]
+        const showGroup = group && (index === 0 || group !== section.subgroups[index - 1])
+        return <div className="atc-featured-item" key={entry.id || index} dir="ltr">
+          {showGroup && <h3 className="atc-subheading">{group}</h3>}
+          <Announcement entry={entry} selected={selected} onSelect={onSelect} />
+        </div>
+      })}</div>
+    )}
   </section>
 }
 
@@ -44,6 +48,20 @@ function packSections(sections, heights, capacities) {
   function capacity(index) { return capacities[Math.min(Math.floor(index / 2), capacities.length - 1)] }
   for (let sectionIndex = 0; sectionIndex < sections.length; sectionIndex++) {
     const section = sections[sectionIndex]
+    // Empty sections still need their heading rendered
+    if (section.entries.length === 0) {
+      const headingHeight = heights[`h-${sectionIndex}`] || 0
+      const emptyHeight = heights[`empty-${sectionIndex}`] || 20
+      const needed = headingHeight + emptyHeight
+      if (used && used + needed > capacity(column)) {
+        column += 1; columns.push([]); used = 0; currentSection = -1; currentGroup = ''
+      }
+      columns[column].push({ type: 'heading', sectionIndex, continued: false })
+      columns[column].push({ type: 'empty', sectionIndex })
+      used += needed
+      currentSection = sectionIndex
+      continue
+    }
     for (let entryIndex = 0; entryIndex < section.entries.length; entryIndex++) {
       const group = section.subgroups?.[entryIndex] || ''
       let headingNeeded = currentSection !== sectionIndex
@@ -124,6 +142,7 @@ export default function AtcNewsletter({ issue, entries, selected, onSelect }) {
             if (!section || (block.type === 'entry' && !section.entries[block.entryIndex])) return null
             if (block.type === 'heading') return <h2 className="atc-section-heading" key={`${index}-h`}>{section.name}{block.continued ? ' · continued' : ''}</h2>
             if (block.type === 'subheading') return <h3 className="atc-subheading" key={`${index}-s`}>{block.label}</h3>
+            if (block.type === 'empty') return <div className="atc-empty-section" key={`${index}-empty`} aria-label={`No ${section.name} this week`} />
             return <Announcement key={`${index}-e`} entry={section.entries[block.entryIndex]} selected={selected} onSelect={onSelect} />
           })}</div>)}
         </div>
@@ -133,6 +152,7 @@ export default function AtcNewsletter({ issue, entries, selected, onSelect }) {
         <FeaturedSection section={featured} />
         {regularSections.map((section, sectionIndex) => <div key={section.name}>
           <h2 className="atc-section-heading" data-measure-key={`h-${sectionIndex}`}>{section.name}</h2>
+          {section.entries.length === 0 && <div className="atc-empty-section" data-measure-key={`empty-${sectionIndex}`} />}
           {section.entries.map((entry, entryIndex) => <div key={entry.id || entryIndex}>
             {section.subgroups && <h3 className="atc-subheading" data-measure-key={`s-${sectionIndex}-${entryIndex}`}>{section.subgroups[entryIndex]}</h3>}
             <div data-measure-key={`e-${sectionIndex}-${entryIndex}`}><Announcement entry={entry} /></div>
