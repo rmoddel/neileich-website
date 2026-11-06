@@ -2,15 +2,16 @@ export const regularOrder = ['Mazel Tovs', 'Community Updates', 'Events & Shiuri
 
 const aliases = new Map([
   ['mazel tov', 'Mazel Tovs'], ['mazal tov', 'Mazel Tovs'], ['mazel tovs', 'Mazel Tovs'], ['mazal tovs', 'Mazel Tovs'],
-  ['community updates', 'Community Updates'], ['events & shiurim', 'Events & Shiurim'], ['events and shiurim', 'Events & Shiurim'],
-  ['classifieds', 'Classifieds'], ['classifieds & services', 'Classifieds'], ['looking for', 'Looking For'],
-  ['selling / for rent', 'Selling / For Rent'], ['lost & found', 'Lost & Found'],
+  ['community updates', 'Community Updates'], ['updates', 'Community Updates'], ['events & shiurim', 'Events & Shiurim'], ['events and shiurim', 'Events & Shiurim'],
+  ['classifieds', 'Classifieds'], ['classifieds & services', 'Classifieds'], ['listings', 'Classifieds'], ['listings continued', 'Classifieds'], ['available', 'Classifieds'], ['looking for', 'Looking For'],
+  ['selling / for rent', 'Selling / For Rent'], ['selling', 'Selling / For Rent'], ['lost & found', 'Lost & Found'],
   ['other notices', 'Other community notices'], ['other community notices', 'Other community notices'],
-  ['neileich updates', 'Neileich Updates'], ['libraries & kids', 'Neileich Updates'],
+  ['neileich updates', 'Neileich Updates'], ['neileich programs', 'Neileich Updates'], ['neileich initiatives', 'Neileich Updates'],
+  ['libraries & kids', 'Neileich Updates'], ['libraries and kids', 'Neileich Updates'], ['library', 'Neileich Updates'], ['youth activities', 'Neileich Updates'], ['bnos news', 'Neileich Updates'],
 ])
 
 export function displayCategory(value) {
-  const name = String(value || '').trim()
+  const name = String(value || '').trim().replace(/[!:]+$/, '').trim()
   return aliases.get(name.toLowerCase()) || name || 'Other community notices'
 }
 
@@ -27,7 +28,7 @@ export function assembleSections(entries, categories = []) {
   const visible = entries.filter(entry => entry.review_status !== 'EXCLUDE' && !entry.deleted_at)
   const grouped = new Map()
   for (const entry of visible) {
-    const name = displayCategory(entry.category)
+    const name = /\bneileich\b/i.test(`${entry.title || ''} ${entry.body || ''}`) ? 'Neileich Updates' : displayCategory(entry.category)
     if (!grouped.has(name)) grouped.set(name, [])
     grouped.get(name).push(entry)
   }

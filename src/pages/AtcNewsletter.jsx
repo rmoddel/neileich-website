@@ -15,16 +15,32 @@ function ShabbosStrip({ shabbos }) {
   if (!shabbos) return null
   return <div className="atc-shabbos" dir="rtl">
     <strong>{shabbos.parsha_he} <bdi>· {shabbos.parsha_en}</bdi></strong>
-    {[
+    <div className="atc-zmanim-grid">{[
       ['הדלקת נרות', shabbos.candle_lighting], ['שקיעה', shabbos.friday_sunset], ['מנחה ערב שבת', shabbos.friday_mincha], ['שחרית', shabbos.shacharis], ['ס״ז ק״ש מ״א', shabbos.sof_zman_shema_mga], ['ס״ז ק״ש גר״א', shabbos.sof_zman_shema_gra], ['מנחה שבת', shabbos.shabbos_mincha], ['מעריב מוצאי שבת', shabbos.motzai_maariv], ['הבדלה', shabbos.shabbos_ends],
-    ].filter(([, value]) => value).map(([label, value]) => <span key={label}><em>{label}</em> <bdi>{value}</bdi></span>)}
+    ].filter(([, value]) => value).map(([label, value]) => <span key={label}><em>{label}</em> <bdi>{value}</bdi></span>)}</div>
   </div>
 }
 
+function FeaturedSection({ section, selected, onSelect, sectionRef }) {
+  if (!section) return null
+  return <section className="atc-featured" ref={sectionRef} aria-label="Neileich Updates">
+    <h2>Neileich Updates</h2>
+    <div className="atc-featured-columns" dir="rtl">{section.entries.map((entry, index) => {
+      const group = section.subgroups?.[index]
+      const showGroup = group && (index === 0 || group !== section.subgroups[index - 1])
+      return <div className="atc-featured-item" key={entry.id || index} dir="ltr">
+        {showGroup && <h3 className="atc-subheading">{group}</h3>}
+        <Announcement entry={entry} selected={selected} onSelect={onSelect} />
+      </div>
+    })}</div>
+  </section>
+}
+
 function packSections(sections, heights, capacities) {
-  const columns = [[]]
+  const firstPageEmpty = capacities[0] < 80
+  const columns = firstPageEmpty ? [[], [], []] : [[]]
   const unfit = []
-  let column = 0, used = 0, currentSection = -1, currentGroup = ''
+  let column = firstPageEmpty ? 2 : 0, used = 0, currentSection = -1, currentGroup = ''
   function capacity(index) { return capacities[Math.min(Math.floor(index / 2), capacities.length - 1)] }
   for (let sectionIndex = 0; sectionIndex < sections.length; sectionIndex++) {
     const section = sections[sectionIndex]
@@ -51,62 +67,72 @@ function packSections(sections, heights, capacities) {
 
 export default function AtcNewsletter({ issue, entries, selected, onSelect }) {
   const sections = useMemo(() => assembleSections(entries, issue.categories), [entries, issue.categories])
+  const featured = sections[0]?.name === 'Neileich Updates' ? sections[0] : null
+  const regularSections = useMemo(() => sections.filter(section => section.name !== 'Neileich Updates'), [sections])
   const shabbos = issue.shabbos
   const [layout, setLayout] = useState({ sections: null, fontSize: fontSizes[0], columns: [[]], unfit: [] })
   const [fontRevision, setFontRevision] = useState(0)
   const measureRef = useRef(null)
+  const featureRef = useRef(null)
   const pageOneRef = useRef(null)
   const pageTwoRef = useRef(null)
   useLayoutEffect(() => { document.fonts?.ready.then(() => setFontRevision(value => value + 1)) }, [])
   useLayoutEffect(() => {
     if (!measureRef.current || !pageOneRef.current || !pageTwoRef.current) return
-    const capacities = [pageOneRef.current.clientHeight, pageTwoRef.current.clientHeight]
-    let packed = { columns: [[]], unfit: [] }, selectedSize = fontSizes.at(-1), selectedHeights = {}
+    const pageOneAvailable = pageOneRef.current.clientHeight + (featureRef.current?.getBoundingClientRect().height || 0)
+    const pageTwoAvailable = pageTwoRef.current.clientHeight
+    let packed = { columns: [[]], unfit: [] }, selectedSize = fontSizes.at(-1), selectedHeights = {}, selectedCapacities = [pageOneAvailable, pageTwoAvailable]
     for (const size of fontSizes) {
       measureRef.current.style.setProperty('--atc-copy-size', `${size}pt`)
+      const featureHeight = measureRef.current.querySelector('.atc-featured')?.getBoundingClientRect().height || 0
+      const capacities = [Math.max(0, pageOneAvailable - featureHeight), pageTwoAvailable]
       const heights = Object.fromEntries([...measureRef.current.querySelectorAll('[data-measure-key]')].map(node => [node.dataset.measureKey, node.getBoundingClientRect().height]))
-      packed = packSections(sections, heights, capacities)
+      packed = packSections(regularSections, heights, capacities)
+      if (featureHeight > pageOneAvailable) packed.unfit.push(...(featured?.entries || []))
       selectedSize = size
       selectedHeights = heights
+      selectedCapacities = capacities
       if (packed.columns.length <= 4 && !packed.unfit.length) break
     }
     if (packed.columns.length > 2 && packed.columns.length <= 4 && !packed.unfit.length) {
-      let low = capacities[1] * .45, high = capacities[1]
+      let low = selectedCapacities[1] * .45, high = selectedCapacities[1]
       for (let attemptIndex = 0; attemptIndex < 8; attemptIndex++) {
         const middle = (low + high) / 2
-        const candidate = packSections(sections, selectedHeights, [capacities[0], middle])
+        const candidate = packSections(regularSections, selectedHeights, [selectedCapacities[0], middle])
         if (candidate.columns.length <= 4 && !candidate.unfit.length) { packed = candidate; high = middle }
         else low = middle
       }
     }
     // Layout is measured from the actual DOM and must update before the preview paints.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLayout({ sections, fontSize: selectedSize, columns: packed.columns, unfit: packed.unfit })
-  }, [sections, fontRevision, shabbos])
+    setLayout({ sections: regularSections, fontSize: selectedSize, columns: packed.columns, unfit: packed.unfit })
+  }, [regularSections, featured, fontRevision, shabbos])
   // A deletion can remove an entire section. Never render column indexes from the previous list.
-  const { fontSize, columns, unfit } = layout.sections === sections ? layout : { fontSize: fontSizes[0], columns: [[]], unfit: [] }
+  const { fontSize, columns, unfit } = layout.sections === regularSections ? layout : { fontSize: fontSizes[0], columns: [[]], unfit: [] }
   const overflow = (columns.length > 4 || unfit.length > 0) && fontSize === fontSizes.at(-1)
-  const pages = Array.from({ length: Math.max(2, Math.ceil(columns.length / 2)) }, (_, index) => index)
+  const pages = Array.from({ length: Math.max(1, Math.ceil(columns.length / 2)) }, (_, index) => index)
   return <>
     {overflow && <p className="atc-overflow-warning" role="alert">This issue cannot fit within two Letter pages at the minimum readable 8.5 pt. Shorten or remove announcements before approval. Check: {[...new Set([...unfit, ...[...entries].sort((a, b) => (b.body?.length || 0) - (a.body?.length || 0)).slice(0, 3)])].slice(0, 3).map(entry => entry.title || entry.body?.slice(0, 35)).join('; ')}.</p>}
     {shabbos?.verification_status !== 'VERIFIED' && <p className="atc-overflow-warning" role="status">Shabbos times are awaiting administrator verification.</p>}
     <article className="atc-paper" aria-label="Printable newsletter" style={{ '--atc-copy-size': `${fontSize}pt` }}>
-      {pages.map(page => <div className={`atc-page ${page > 0 && !columns[page * 2]?.length && !columns[page * 2 + 1]?.length ? 'atc-page-empty' : ''}`} key={page}>
-        <header className={`atc-masthead ${page ? 'atc-masthead-continued' : ''}`}><img src="/around-the-commons-logo.png" alt="Around the Commons · Lakewood Commons" onLoad={page === 0 ? () => setFontRevision(value => value + 1) : undefined} />{page > 0 && <span>Continued</span>}</header>
-        {page === 0 && <ShabbosStrip shabbos={shabbos} />}
-        <div className="atc-page-columns" ref={page === 0 ? pageOneRef : page === 1 ? pageTwoRef : undefined} dir="rtl">
+      {pages.map(page => <div className="atc-page" key={page}>
+        <header className={`atc-masthead ${page ? 'atc-masthead-continued' : ''}`}><img src="/around-the-commons-logo.png" alt="Around the Commons · Lakewood Commons" onLoad={page === 0 ? () => setFontRevision(value => value + 1) : undefined} />{page === 0 ? <ShabbosStrip shabbos={shabbos} /> : <span>Continued</span>}</header>
+        {page === 0 && <FeaturedSection section={featured} selected={selected} onSelect={onSelect} sectionRef={featureRef} />}
+        <div className="atc-page-columns" ref={page === 0 ? pageOneRef : undefined} dir="rtl">
           {[0, 1].map(side => <div className="atc-column" key={side} dir="ltr">{(columns[page * 2 + side] || []).map((block, index) => {
-            const section = sections[block.sectionIndex]
+            const section = regularSections[block.sectionIndex]
             if (!section || (block.type === 'entry' && !section.entries[block.entryIndex])) return null
-            if (block.type === 'heading') return <h2 className={section.name === 'Neileich Updates' ? 'atc-section-heading atc-feature-heading' : 'atc-section-heading'} key={`${index}-h`}>{section.name}{block.continued ? ' · continued' : ''}</h2>
+            if (block.type === 'heading') return <h2 className="atc-section-heading" key={`${index}-h`}>{section.name}{block.continued ? ' · continued' : ''}</h2>
             if (block.type === 'subheading') return <h3 className="atc-subheading" key={`${index}-s`}>{block.label}</h3>
             return <Announcement key={`${index}-e`} entry={section.entries[block.entryIndex]} selected={selected} onSelect={onSelect} />
           })}</div>)}
         </div>
       </div>)}
+      <div className="atc-page-capacity-probe" aria-hidden="true"><header className="atc-masthead atc-masthead-continued"><img src="/around-the-commons-logo.png" alt="" onLoad={() => setFontRevision(value => value + 1)} /><span>Continued</span></header><div className="atc-page-columns" ref={pageTwoRef} /></div>
       <div className="atc-measure" ref={measureRef} aria-hidden="true">
-        {sections.map((section, sectionIndex) => <div key={section.name}>
-          <h2 className={section.name === 'Neileich Updates' ? 'atc-section-heading atc-feature-heading' : 'atc-section-heading'} data-measure-key={`h-${sectionIndex}`}>{section.name}</h2>
+        <FeaturedSection section={featured} />
+        {regularSections.map((section, sectionIndex) => <div key={section.name}>
+          <h2 className="atc-section-heading" data-measure-key={`h-${sectionIndex}`}>{section.name}</h2>
           {section.entries.map((entry, entryIndex) => <div key={entry.id || entryIndex}>
             {section.subgroups && <h3 className="atc-subheading" data-measure-key={`s-${sectionIndex}-${entryIndex}`}>{section.subgroups[entryIndex]}</h3>}
             <div data-measure-key={`e-${sectionIndex}-${entryIndex}`}><Announcement entry={entry} /></div>

@@ -14,12 +14,12 @@ const aliases = {
 }
 const categoryAliases = {
   'mazel tovs': 'Mazel Tov', 'mazal tov': 'Mazel Tov', 'mazal tovs': 'Mazel Tov',
-  'classifieds': 'Classifieds & Services', 'services': 'Classifieds & Services',
+  'classifieds': 'Classifieds & Services', 'services': 'Classifieds & Services', 'listings': 'Classifieds & Services', 'listings continued': 'Classifieds & Services', 'available': 'Classifieds & Services',
   'other community notices': 'Other Notices', 'events': 'Events & Shiurim', 'shiurim': 'Events & Shiurim',
-  'libraries': 'Libraries & Kids', 'kids': 'Libraries & Kids', 'for sale': 'Selling / For Rent',
+  'libraries': 'Libraries & Kids', 'library': 'Libraries & Kids', 'bnos news': 'Neileich Updates', 'kids': 'Libraries & Kids', 'for sale': 'Selling / For Rent', 'selling': 'Selling / For Rent', 'updates': 'Community Updates',
   'rentals': 'Selling / For Rent', 'lost and found': 'Lost & Found',
 }
-export const normalize = value => String(value ?? '').trim().toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ')
+export const normalize = value => String(value ?? '').trim().toLowerCase().replace(/[!:]+$/, '').replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim()
 
 export function detectMapping(headers) {
   const found = {}
