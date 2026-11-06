@@ -6,7 +6,7 @@ const fontSizes = [10.5, 10, 9.5, 9, 8.5]
 
 function Announcement({ entry, selected, onSelect }) {
   return <div className={`atc-announcement ${selected === entry ? 'is-selected' : ''}`} onClick={() => onSelect?.(entry)} role={onSelect ? 'button' : undefined} tabIndex={onSelect ? 0 : undefined} onKeyDown={event => { if (onSelect && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); onSelect(entry) } }}>
-    <p dir="auto">{entry.title && <strong>{entry.title}{entry.body ? ' · ' : ''}</strong>}{entry.body}</p>
+    <p dir="auto">{entry.body}</p>
     {(entry.event_date || entry.price || entry.contact) && <small dir="auto">{[entry.event_date, entry.price, entry.contact].filter(Boolean).join(' · ')}</small>}
   </div>
 }
@@ -114,7 +114,7 @@ export default function AtcNewsletter({ issue, entries, selected, onSelect }) {
   return <>
     {overflow && <p className="atc-overflow-warning" role="alert">This issue cannot fit within two Letter pages at the minimum readable 8.5 pt. Shorten or remove announcements before approval. Check: {[...new Set([...unfit, ...[...entries].sort((a, b) => (b.body?.length || 0) - (a.body?.length || 0)).slice(0, 3)])].slice(0, 3).map(entry => entry.title || entry.body?.slice(0, 35)).join('; ')}.</p>}
     {shabbos?.verification_status !== 'VERIFIED' && <p className="atc-overflow-warning" role="status">Shabbos times are awaiting administrator verification.</p>}
-    <article className="atc-paper" aria-label="Printable newsletter" style={{ '--atc-copy-size': `${fontSize}pt` }}>
+    <article aria-label="Printable newsletter" style={{ '--atc-copy-size': `${fontSize}pt` }}>
       {pages.map(page => <div className="atc-page" key={page}>
         <header className={`atc-masthead ${page ? 'atc-masthead-continued' : ''}`}><img src="/around-the-commons-logo.png" alt="Around the Commons · Lakewood Commons" onLoad={page === 0 ? () => setFontRevision(value => value + 1) : undefined} />{page === 0 ? <ShabbosStrip shabbos={shabbos} /> : <span>Continued</span>}</header>
         {page === 0 && <FeaturedSection section={featured} selected={selected} onSelect={onSelect} sectionRef={featureRef} />}
