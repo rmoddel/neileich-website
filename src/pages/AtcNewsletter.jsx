@@ -41,10 +41,11 @@ function FeaturedSection({ section, selected, onSelect, sectionRef }) {
 }
 
 function packSections(sections, heights, capacities) {
-  const firstPageEmpty = capacities[0] < 80
-  const columns = firstPageEmpty ? [[], [], []] : [[]]
+  // Always start from column 0 (right column in RTL) to maintain section priority
+  // Column 0 = page 1 right, Column 1 = page 1 left, Column 2 = page 2 right, etc.
+  const columns = [[]]
   const unfit = []
-  let column = firstPageEmpty ? 2 : 0, used = 0, currentSection = -1, currentGroup = ''
+  let column = 0, used = 0, currentSection = -1, currentGroup = ''
   function capacity(index) { return capacities[Math.min(Math.floor(index / 2), capacities.length - 1)] }
   for (let sectionIndex = 0; sectionIndex < sections.length; sectionIndex++) {
     const section = sections[sectionIndex]
