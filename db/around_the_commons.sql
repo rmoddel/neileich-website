@@ -148,6 +148,40 @@ begin
   end loop;
 end $$;
 
+-- A spreadsheet batch is atomic. The existing incoming source identity makes a retry idempotent.
+-- Only individual announcement fields are stored; the original spreadsheet file stays in the browser.
+create or replace function import_newsletter_bulk(p_week date, p_batch uuid, p_entries jsonb) returns jsonb language plpgsql as $$
+declare v_item jsonb; v_ordinal bigint; v_id uuid; v_category text; v_status text; v_existing integer; v_order integer;
+begin
+  if extract(dow from p_week) <> 5 or jsonb_typeof(p_entries) <> 'array' or jsonb_array_length(p_entries) < 1 or jsonb_array_length(p_entries) > 300 then raise exception 'Invalid bulk import'; end if;
+  perform newsletter_lock_week(p_week);
+  select count(*) into v_existing from newsletter_incoming where source='spreadsheet' and source_id like p_batch::text || ':%';
+  if v_existing > 0 then
+    if v_existing <> jsonb_array_length(p_entries) then raise exception 'This import key was already used for different entries'; end if;
+    for v_item, v_ordinal in select value, ordinality from jsonb_array_elements(p_entries) with ordinality loop
+      if not exists (select 1 from newsletter_incoming where source='spreadsheet' and source_id=p_batch::text || ':' || v_ordinal::text and issue_week=p_week and cleaned_payload=v_item) then
+        raise exception 'This import key was already used for different entries';
+      end if;
+    end loop;
+    return jsonb_build_object('week',p_week,'imported',0,'alreadyImported',v_existing,'failed',0);
+  end if;
+  insert into newsletter_issues(issue_week) values(p_week) on conflict do nothing;
+  if exists (select 1 from newsletter_issues where issue_week=p_week and status='APPROVED') then raise exception 'Approved issues cannot be edited'; end if;
+  select coalesce(max(sort_order),0) into v_order from newsletter_announcements where issue_week=p_week;
+  for v_item, v_ordinal in select value, ordinality from jsonb_array_elements(p_entries) with ordinality loop
+    v_category := v_item->>'category'; v_status := v_item->>'review_status';
+    if not exists (select 1 from newsletter_categories where category=v_category and active) then raise exception 'Row % has an unknown category: %', v_ordinal, v_category; end if;
+    if trim(coalesce(v_item->>'body','')) = '' then raise exception 'Row % is missing announcement wording', v_ordinal; end if;
+    if v_status not in ('NEEDS_REVIEW','READY') or v_status is null then raise exception 'Row % has an invalid review status', v_ordinal; end if;
+    if coalesce(v_item->>'event_date','') <> '' and (v_item->>'event_date') !~ '^\d{4}-\d{2}-\d{2}$' then raise exception 'Row % has an invalid event date', v_ordinal; end if;
+    insert into newsletter_incoming(issue_week,source,source_id,raw_text,cleaned_payload,ingest_status)
+      values(p_week,'spreadsheet',p_batch::text || ':' || v_ordinal::text,coalesce(v_item->>'original_text',v_item->>'body'),v_item,'PROCESSED') returning id into v_id;
+    insert into newsletter_announcements(issue_week,incoming_id,category,title,body,contact,event_date,price,flags,original_text,review_status,sort_order,processed_at,notes)
+      values(p_week,v_id,v_category,coalesce(v_item->>'title',''),v_item->>'body',coalesce(v_item->>'contact',''),coalesce(v_item->>'event_date',''),coalesce(v_item->>'price',''),'',coalesce(v_item->>'original_text',v_item->>'body'),v_status,v_order+v_ordinal::integer,now(),coalesce(v_item->>'notes',''));
+  end loop;
+  return jsonb_build_object('week',p_week,'imported',jsonb_array_length(p_entries),'alreadyImported',0,'failed',0);
+end $$;
+
 create or replace function approve_newsletter(p_week date, p_actor text) returns jsonb language plpgsql as $$
 declare v_shabbos jsonb; v_entries jsonb; v_categories jsonb; v_snapshot jsonb; v_approved_at timestamptz := now();
 begin

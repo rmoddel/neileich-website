@@ -38,6 +38,19 @@ export async function saveDraft(week, changes, sql = newsletterDb()) {
   return getIssue(week, sql)
 }
 
+export async function importSpreadsheet(week, batchId, entries, sql = newsletterDb()) {
+  if (!validIssueWeek(week) || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(batchId || '') || !Array.isArray(entries) || !entries.length || entries.length > 300) throw new Error('Invalid bulk import')
+  for (const entry of entries) {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry) || !entry.category?.trim() || !entry.body?.trim() || !['NEEDS_REVIEW', 'READY'].includes(entry.review_status)) throw new Error('Every row needs a category, wording, and valid review status')
+    if (entry.event_date) {
+      const date = new Date(`${entry.event_date}T00:00:00Z`)
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(entry.event_date) || Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== entry.event_date) throw new Error('Event dates must be YYYY-MM-DD')
+    }
+  }
+  const result = await sql`select import_newsletter_bulk(${week}::date,${batchId}::uuid,${JSON.stringify(entries)}::jsonb) as result`
+  return result[0].result
+}
+
 export function validateApproval(issue) {
   const errors = []
   if (!issue.shabbos) errors.push('Shabbos information is missing')

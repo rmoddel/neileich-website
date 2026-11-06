@@ -35,6 +35,12 @@ Send `POST https://neileich.org/api/around-the-commons/ingest` with `Authorizati
 
 `issueWeek` is optional; if supplied it must match the Friday calculated from `receivedAt` in New York. The raw message is preserved. Duplicate `(source, sourceId)` calls are idempotent. Machine-cleaned entries enter `NEEDS_REVIEW` and cannot be published until an editor marks them `READY`. Keep the token in Apps Script properties, not in client code or source control.
 
+### Spreadsheet bulk import
+
+In the ATC editor, choose **Import Spreadsheet**. The browser reads the first worksheet of an `.xlsx` file or a `.csv` file, detects headers, and shows editable column mapping and announcement rows. Choose the Friday issue week, correct unknown categories against the active Neon category list, and submit only after reviewing the rows. The spreadsheet file is never uploaded or stored; only reviewed announcement fields and each row's original wording are sent to the authenticated `/api/newsletter/bulk-import` endpoint. New rows default to `NEEDS_REVIEW`, then appear in the existing newsletter editor for approval and PDF printing.
+
+The `import_newsletter_bulk` function in `db/around_the_commons.sql` must be installed in Neon before using the importer. It appends all rows in one transaction under the issue lock and uses a batch identity to make retries safe.
+
 ## Zmanim chart workflow
 
 Upload the official Bais Medrash seasonal PDF in the authenticated Zmanim area. PDF.js extracts embedded text and positioned table rows first; Gemini then interprets the PDF and those rows into structured records. The system retains the original extracted records and PDF source for audit. If the chart does not establish the calendar year, Friday dates stay blank. An administrator must enter actual dates, correct all times, mark each included row **Reviewed**, and explicitly confirm. A row can be **Skipped**; skipped rows remain in the import audit. Confirmation saves included rows to `newsletter_zmanim` in one database transaction. It refuses to replace an existing verified week or an approved issue; an existing verified row can only be changed through the newsletter's Shabbos editor with a separate explicit confirmation. Motzai Shabbos Maariv never fills Havdalah automatically.

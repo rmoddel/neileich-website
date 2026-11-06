@@ -4,6 +4,7 @@ import ingest from '../server/api/around-the-commons/ingest.js'
 import session from '../server/api/newsletter/session.js'
 import issue from '../server/api/newsletter/issue.js'
 import draft from '../server/api/newsletter/draft.js'
+import bulkImport from '../server/api/newsletter/bulk-import.js'
 import approve from '../server/api/newsletter/approve.js'
 import shabbos from '../server/api/newsletter/shabbos.js'
 import zmanimUpload from '../server/api/newsletter/zmanim/upload.js'
@@ -14,7 +15,7 @@ import zmanimSource from '../server/api/newsletter/zmanim/source.js'
 export const config = { maxDuration: 120 }
 
 const handlers = {
-  login, logout, ingest, session, issue, draft, approve, shabbos,
+  login, logout, ingest, session, issue, draft, approve, shabbos, 'bulk-import': bulkImport,
   'zmanim-upload': zmanimUpload,
   'zmanim-import': zmanimImport,
   'zmanim-confirm': zmanimConfirm,

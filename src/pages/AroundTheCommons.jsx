@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import './AroundTheCommons.css'
 
 const defaults = ['Neileich Updates', 'Mazel Tov', 'Community Updates', 'Events & Shiurim', 'Classifieds', 'Looking For', 'Selling / For Rent', 'Lost & Found', 'Other community notices']
@@ -56,6 +56,7 @@ function Newsletter({ issue, entries, selected, onSelect }) {
 
 export default function AroundTheCommons() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [user, setUser] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [issue, setIssue] = useState(null)
@@ -71,11 +72,11 @@ export default function AroundTheCommons() {
   useEffect(() => { api('session').then(data => setUser(data.user)).catch(() => {}).finally(() => setAuthLoading(false)) }, [])
   const load = useCallback(async chosen => {
     setBusy(true); setMessage('')
-    try { const data = await api(`issue${chosen ? `?week=${encodeURIComponent(chosen)}` : ''}`); setIssue(data); setWeek(data.week); setEntries(data.entries); setSelected(null); setDirty(false); setShabbosDraft(data.shabbos || { verification_status: 'NEEDS_REVIEW' }); setShabbosDirty(false); setPublishedView(data.issue.status === 'APPROVED') }
-    catch (error) { setMessage(error.message) }
+    try { const data = await api(`issue${chosen ? `?week=${encodeURIComponent(chosen)}` : ''}`); setIssue(data); setWeek(data.week); setEntries(data.entries); setSelected(null); setDirty(false); setShabbosDraft(data.shabbos || { verification_status: 'NEEDS_REVIEW' }); setShabbosDirty(false); setPublishedView(data.issue.status === 'APPROVED'); return true }
+    catch (error) { setMessage(error.message); return false }
     finally { setBusy(false) }
   }, [])
-  useEffect(() => { if (user) load() }, [user, load])
+  useEffect(() => { if (user) { const params = new URLSearchParams(location.search); load(params.get('week') || undefined).then(loaded => { if (loaded && params.has('imported')) setMessage(`${params.get('imported')} announcements imported to ${params.get('week')}. ${Number(params.get('alreadyImported')) ? `${params.get('alreadyImported')} were already imported. ` : ''}${Number(params.get('failed')) ? `${params.get('failed')} failed.` : 'Review and approve the newsletter when ready.'}`) }) } }, [user, load, location.search])
   const categories = useMemo(() => issue?.categories?.map(item => item.category) || defaults, [issue])
   const current = selected && entries.find(item => item === selected)
   function update(field, value) { const next = { ...selected, [field]: value }; setEntries(old => old.map(item => item === selected ? next : item)); setSelected(next); setDirty(true) }
@@ -121,7 +122,7 @@ export default function AroundTheCommons() {
   return <div className="atc-shell">
     <div className="atc-toolbar"><div><p>AROUND THE COMMONS · EDITOR</p><h1>{week || 'Newsletter'}</h1><span>{issue?.issue?.status || 'DRAFT'} · {user.username}</span></div>
       <div className="atc-actions"><label>Issue <select value={week} disabled={busy} onChange={event => { if ((dirty || shabbosDirty) && !window.confirm('Discard unsaved changes?')) return; load(event.target.value) }}>{[...new Set([week, ...(issue?.weeks || [])])].filter(Boolean).map(value => <option key={value}>{value}</option>)}</select></label>
-      <Link className="atc-button" to="/around-the-commons/zmanim">Zmanim</Link><button onClick={add} disabled={busy || publishedView}>Add announcement</button><button onClick={save} disabled={busy || !dirty || publishedView}>Save Draft</button><button onClick={approve} disabled={busy || dirty || !user.approver || issue?.issue?.status === 'APPROVED'}>Approve Newsletter</button><button onClick={() => window.print()} disabled={!issue}>Print / Save PDF</button>
+      <Link className="atc-button" to="/around-the-commons/import">Import Spreadsheet</Link><Link className="atc-button" to="/around-the-commons/zmanim">Zmanim</Link><button onClick={add} disabled={busy || publishedView}>Add announcement</button><button onClick={save} disabled={busy || !dirty || publishedView}>Save Draft</button><button onClick={approve} disabled={busy || dirty || !user.approver || issue?.issue?.status === 'APPROVED'}>Approve Newsletter</button><button onClick={() => window.print()} disabled={!issue}>Print / Save PDF</button>
       {issue?.published?.length > 0 && <button onClick={() => setPublishedView(value => !value)}>{publishedView ? 'View working sheet' : 'View approved edition'}</button>}
       <button onClick={async () => { try { const response = await fetch('/api/around-the-commons/auth/logout', { method: 'POST', credentials: 'same-origin' }); if (!response.ok) throw new Error('Sign-out is temporarily unavailable.'); navigate('/around-the-commons/login', { replace: true }) } catch (error) { setMessage(error.message) } }}>Sign out</button></div></div>
     {message && <p className="atc-message" role="status">{message}</p>}

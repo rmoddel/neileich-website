@@ -13,6 +13,7 @@
     { "source": "/api/newsletter/session", "destination": "/api/atc?endpoint=session" },
     { "source": "/api/newsletter/issue", "destination": "/api/atc?endpoint=issue" },
     { "source": "/api/newsletter/draft", "destination": "/api/atc?endpoint=draft" },
+    { "source": "/api/newsletter/bulk-import", "destination": "/api/atc?endpoint=bulk-import" },
     { "source": "/api/newsletter/approve", "destination": "/api/atc?endpoint=approve" },
     { "source": "/api/newsletter/shabbos", "destination": "/api/atc?endpoint=shabbos" },
     { "source": "/api/newsletter/zmanim/upload", "destination": "/api/atc?endpoint=zmanim-upload" },

@@ -21,10 +21,12 @@
     "html2canvas": "^1.4.1",
     "jose": "^6.2.15",
     "jspdf": "^4.2.1",
+    "papaparse": "^5.7.0",
     "pdfjs-dist": "^6.5.438",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-router-dom": "^7.18.5",
+    "read-excel-file": "^9.3.14",
     "resend": "^6.19.0"
   },
   "overrides": {
