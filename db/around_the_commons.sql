@@ -68,6 +68,10 @@ create table if not exists newsletter_announcements (
   updated_at timestamptz not null default now()
 );
 create index if not exists newsletter_announcements_week_idx on newsletter_announcements (issue_week, category, sort_order);
+alter table newsletter_announcements add column if not exists is_important boolean not null default false;
+alter table newsletter_announcements add column if not exists is_test boolean not null default false;
+alter table newsletter_announcements add column if not exists deleted_at timestamptz;
+alter table newsletter_announcements add column if not exists deleted_by text;
 create table if not exists newsletter_zmanim_imports (
   id uuid primary key default gen_random_uuid(),
   sha256 text not null unique,
@@ -137,15 +141,41 @@ begin
     if length(trim(coalesce(v_item->>'title','') || coalesce(v_item->>'body',''))) = 0 then raise exception 'Announcement wording is required'; end if;
     if (v_item->>'sort_order') !~ '^-?[0-9]+$' then raise exception 'Invalid order'; end if;
     if coalesce(v_item->>'id','') = '' then
-      insert into newsletter_announcements(issue_week,category,title,body,contact,event_date,price,flags,original_text,review_status,sort_order,processed_at,notes)
-      values(p_week,v_category,coalesce(v_item->>'title',''),coalesce(v_item->>'body',''),coalesce(v_item->>'contact',''),coalesce(v_item->>'event_date',''),coalesce(v_item->>'price',''),coalesce(v_item->>'flags',''),coalesce(v_item->>'original_text',''),v_status,(v_item->>'sort_order')::integer,now(),coalesce(v_item->>'notes',''));
+      insert into newsletter_announcements(issue_week,category,title,body,contact,event_date,price,flags,original_text,review_status,sort_order,processed_at,notes,is_important,is_test)
+      values(p_week,v_category,coalesce(v_item->>'title',''),coalesce(v_item->>'body',''),coalesce(v_item->>'contact',''),coalesce(v_item->>'event_date',''),coalesce(v_item->>'price',''),coalesce(v_item->>'flags',''),coalesce(v_item->>'original_text',''),v_status,(v_item->>'sort_order')::integer,now(),coalesce(v_item->>'notes',''),coalesce((v_item->>'is_important')::boolean,false),coalesce((v_item->>'is_test')::boolean,false));
     else
       v_id := (v_item->>'id')::uuid; v_version := (v_item->>'revision')::integer;
-      update newsletter_announcements set category=v_category,title=coalesce(v_item->>'title',''),body=coalesce(v_item->>'body',''),contact=coalesce(v_item->>'contact',''),event_date=coalesce(v_item->>'event_date',''),price=coalesce(v_item->>'price',''),flags=coalesce(v_item->>'flags',''),review_status=v_status,sort_order=(v_item->>'sort_order')::integer,notes=coalesce(v_item->>'notes',''),version=version+1,updated_at=now()
-      where id=v_id and issue_week=p_week and version=v_version;
+      update newsletter_announcements set category=v_category,title=coalesce(v_item->>'title',''),body=coalesce(v_item->>'body',''),contact=coalesce(v_item->>'contact',''),event_date=coalesce(v_item->>'event_date',''),price=coalesce(v_item->>'price',''),flags=coalesce(v_item->>'flags',''),review_status=v_status,sort_order=(v_item->>'sort_order')::integer,notes=coalesce(v_item->>'notes',''),is_important=coalesce((v_item->>'is_important')::boolean,false),is_test=coalesce((v_item->>'is_test')::boolean,false),version=version+1,updated_at=now()
+      where id=v_id and issue_week=p_week and version=v_version and deleted_at is null;
       if not found then raise exception 'This announcement changed. Reload before saving.'; end if;
     end if;
   end loop;
+end $$;
+
+-- Soft deletion leaves incoming submissions and import audit rows intact.
+create or replace function delete_newsletter_announcement(p_week date,p_id uuid,p_actor text) returns integer language plpgsql as $$
+declare v_count integer;
+begin
+  if extract(dow from p_week) <> 5 then raise exception 'Invalid Friday issue date'; end if;
+  perform newsletter_lock_week(p_week);
+  if exists (select 1 from newsletter_issues where issue_week=p_week and status='APPROVED') or exists (select 1 from newsletter_published where issue_week=p_week) then raise exception 'Approved issues cannot be edited'; end if;
+  update newsletter_announcements set deleted_at=now(),deleted_by=p_actor,version=version+1,updated_at=now()
+    where issue_week=p_week and id=p_id and deleted_at is null;
+  get diagnostics v_count = row_count;
+  return v_count;
+end $$;
+
+create or replace function delete_newsletter_test_announcements(p_week date,p_actor text,p_expected_count integer) returns integer language plpgsql as $$
+declare v_count integer;
+begin
+  if extract(dow from p_week) <> 5 or p_expected_count < 1 then raise exception 'Invalid test cleanup request'; end if;
+  perform newsletter_lock_week(p_week);
+  if exists (select 1 from newsletter_issues where issue_week=p_week and status='APPROVED') or exists (select 1 from newsletter_published where issue_week=p_week) then raise exception 'Approved issues cannot be edited'; end if;
+  select count(*) into v_count from newsletter_announcements where issue_week=p_week and is_test=true and deleted_at is null;
+  if v_count <> p_expected_count then raise exception 'Test count changed. Reload before deleting'; end if;
+  update newsletter_announcements set deleted_at=now(),deleted_by=p_actor,version=version+1,updated_at=now()
+    where issue_week=p_week and is_test=true and deleted_at is null;
+  return v_count;
 end $$;
 
 -- A spreadsheet batch is atomic. The existing incoming source identity makes a retry idempotent.
@@ -191,9 +221,9 @@ begin
   if exists (select 1 from newsletter_published where issue_week=p_week) or exists (select 1 from newsletter_issues where issue_week=p_week and status='APPROVED') then raise exception 'Issue is already approved'; end if;
   select to_jsonb(s) into v_shabbos from newsletter_zmanim s where issue_week=p_week and verification_status='VERIFIED';
   if v_shabbos is null or coalesce(v_shabbos->>'parsha_he','')='' or coalesce(v_shabbos->>'candle_lighting','')='' or coalesce(v_shabbos->>'friday_sunset','')='' or coalesce(v_shabbos->>'shacharis','')='' or coalesce(v_shabbos->>'sof_zman_shema_mga','')='' or coalesce(v_shabbos->>'sof_zman_shema_gra','')='' or coalesce(v_shabbos->>'motzai_maariv','')='' then raise exception 'Verified Shabbos information is required'; end if;
-  if exists (select 1 from newsletter_announcements where issue_week=p_week and review_status='NEEDS_REVIEW') then raise exception 'Resolve announcements that need review'; end if;
-  if exists (select 1 from newsletter_announcements where issue_week=p_week and review_status='READY' and (trim(flags)<>'' or (trim(title)='' and trim(body)='') or (event_date<>'' and (event_date !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' or event_date < p_week::text)))) then raise exception 'Resolve blocking announcement warnings'; end if;
-  select jsonb_agg(to_jsonb(a) order by a.sort_order,a.id) into v_entries from newsletter_announcements a where issue_week=p_week and review_status='READY';
+  if exists (select 1 from newsletter_announcements where issue_week=p_week and deleted_at is null and review_status='NEEDS_REVIEW') then raise exception 'Resolve announcements that need review'; end if;
+  if exists (select 1 from newsletter_announcements where issue_week=p_week and deleted_at is null and review_status='READY' and (trim(flags)<>'' or (trim(title)='' and trim(body)='') or (event_date<>'' and (event_date !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' or event_date < p_week::text)))) then raise exception 'Resolve blocking announcement warnings'; end if;
+  select jsonb_agg(to_jsonb(a) order by a.sort_order,a.id) into v_entries from newsletter_announcements a where issue_week=p_week and deleted_at is null and review_status='READY';
   if v_entries is null then raise exception 'No READY announcements to approve'; end if;
   select coalesce(jsonb_agg(to_jsonb(c) order by c.print_order,c.category),'[]'::jsonb) into v_categories from newsletter_categories c where active;
   v_snapshot := jsonb_build_object('week',p_week::text,'entries',v_entries,'shabbos',v_shabbos,'categories',v_categories);
@@ -209,9 +239,9 @@ begin
   if exists (select 1 from newsletter_issues where issue_week=p_week and status='APPROVED') or exists (select 1 from newsletter_published where issue_week=p_week) then raise exception 'Approved issues cannot be edited'; end if;
   if p_data->>'verification_status'='VERIFIED' and (coalesce(p_data->>'candle_lighting','')='' or coalesce(p_data->>'friday_sunset','')='' or coalesce(p_data->>'shacharis','')='' or coalesce(p_data->>'sof_zman_shema_mga','')='' or coalesce(p_data->>'sof_zman_shema_gra','')='' or coalesce(p_data->>'motzai_maariv','')='') then raise exception 'Required official zmanim are missing'; end if;
   if exists (select 1 from newsletter_zmanim where issue_week=p_week and verification_status='VERIFIED') and coalesce(p_data->>'replace_verified','false') <> 'true' then raise exception 'Confirm replacement of verified zmanim'; end if;
-  insert into newsletter_zmanim(issue_week,parsha_he,parsha_en,friday_date,shabbos_date,candle_lighting,friday_sunset,sof_zman_shema_gra,shabbos_ends,source,verification_status,notes,shacharis,sof_zman_shema_mga,shabbos_mincha,motzai_maariv,friday_mincha,friday_maariv,erev_shabbos_mincha,verified_at,verified_by)
-  values(p_week,coalesce(p_data->>'parsha_he',''),coalesce(p_data->>'parsha_en',''),coalesce(p_data->>'friday_date',''),coalesce(p_data->>'shabbos_date',''),coalesce(p_data->>'candle_lighting',''),coalesce(p_data->>'friday_sunset',''),coalesce(p_data->>'sof_zman_shema_gra',''),coalesce(p_data->>'shabbos_ends',''),coalesce(p_data->>'source',''),coalesce(p_data->>'verification_status','NEEDS_REVIEW'),coalesce(p_data->>'notes',''),coalesce(p_data->>'shacharis',''),coalesce(p_data->>'sof_zman_shema_mga',''),coalesce(p_data->>'shabbos_mincha',''),coalesce(p_data->>'motzai_maariv',''),coalesce(p_data->>'friday_mincha',''),coalesce(p_data->>'friday_maariv',''),coalesce(p_data->>'erev_shabbos_mincha',''),case when p_data->>'verification_status'='VERIFIED' then now() end,case when p_data->>'verification_status'='VERIFIED' then p_data->>'verified_by' end)
-  on conflict(issue_week) do update set parsha_he=excluded.parsha_he,parsha_en=excluded.parsha_en,friday_date=excluded.friday_date,shabbos_date=excluded.shabbos_date,candle_lighting=excluded.candle_lighting,friday_sunset=excluded.friday_sunset,sof_zman_shema_gra=excluded.sof_zman_shema_gra,shabbos_ends=excluded.shabbos_ends,source=excluded.source,verification_status=excluded.verification_status,notes=excluded.notes,shacharis=excluded.shacharis,sof_zman_shema_mga=excluded.sof_zman_shema_mga,shabbos_mincha=excluded.shabbos_mincha,motzai_maariv=excluded.motzai_maariv,friday_mincha=excluded.friday_mincha,friday_maariv=excluded.friday_maariv,erev_shabbos_mincha=excluded.erev_shabbos_mincha,verified_at=excluded.verified_at,verified_by=excluded.verified_by,updated_at=now();
+  insert into newsletter_zmanim(issue_week,parsha_he,parsha_en,friday_date,shabbos_date,candle_lighting,friday_sunset,sof_zman_shema_gra,shabbos_ends,source,verification_status,notes,shacharis,sof_zman_shema_mga,shabbos_mincha,motzai_maariv,friday_mincha,friday_maariv,erev_shabbos_mincha,original_values,verified_at,verified_by)
+  values(p_week,coalesce(p_data->>'parsha_he',''),coalesce(p_data->>'parsha_en',''),coalesce(p_data->>'friday_date',''),coalesce(p_data->>'shabbos_date',''),coalesce(p_data->>'candle_lighting',''),coalesce(p_data->>'friday_sunset',''),coalesce(p_data->>'sof_zman_shema_gra',''),coalesce(p_data->>'shabbos_ends',''),coalesce(p_data->>'source',''),coalesce(p_data->>'verification_status','NEEDS_REVIEW'),coalesce(p_data->>'notes',''),coalesce(p_data->>'shacharis',''),coalesce(p_data->>'sof_zman_shema_mga',''),coalesce(p_data->>'shabbos_mincha',''),coalesce(p_data->>'motzai_maariv',''),coalesce(p_data->>'friday_mincha',''),coalesce(p_data->>'friday_maariv',''),coalesce(p_data->>'erev_shabbos_mincha',''),coalesce(p_data->'original_values','{}'::jsonb),case when p_data->>'verification_status'='VERIFIED' then now() end,case when p_data->>'verification_status'='VERIFIED' then p_data->>'verified_by' end)
+  on conflict(issue_week) do update set parsha_he=excluded.parsha_he,parsha_en=excluded.parsha_en,friday_date=excluded.friday_date,shabbos_date=excluded.shabbos_date,candle_lighting=excluded.candle_lighting,friday_sunset=excluded.friday_sunset,sof_zman_shema_gra=excluded.sof_zman_shema_gra,shabbos_ends=excluded.shabbos_ends,source=excluded.source,verification_status=excluded.verification_status,notes=excluded.notes,shacharis=excluded.shacharis,sof_zman_shema_mga=excluded.sof_zman_shema_mga,shabbos_mincha=excluded.shabbos_mincha,motzai_maariv=excluded.motzai_maariv,friday_mincha=excluded.friday_mincha,friday_maariv=excluded.friday_maariv,erev_shabbos_mincha=excluded.erev_shabbos_mincha,original_values=excluded.original_values,verified_at=excluded.verified_at,verified_by=excluded.verified_by,updated_at=now();
 end $$;
 
 -- One transaction confirms every reviewed week. Existing verified rows and approved issues are never replaced.

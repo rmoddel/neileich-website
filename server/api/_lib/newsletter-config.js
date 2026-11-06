@@ -1,5 +1,6 @@
 export const newsletterConfig = {
   timezone: process.env.NEWSLETTER_TIMEZONE || 'America/New_York',
+  scheduleUrl: process.env.ATC_SHUL_SCHEDULE_URL || 'https://baismedrashoflakewoodcommons.org/api/schedule.json',
 }
 
 export function getCurrentIssueWeek(now = new Date(), timezone = newsletterConfig.timezone) {

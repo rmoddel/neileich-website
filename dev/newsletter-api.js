@@ -10,12 +10,10 @@ const handlers = {
   '/api/newsletter/session': 'server/api/newsletter/session.js',
   '/api/newsletter/issue': 'server/api/newsletter/issue.js',
   '/api/newsletter/draft': 'server/api/newsletter/draft.js',
+  '/api/newsletter/bulk-import': 'server/api/newsletter/bulk-import.js',
   '/api/newsletter/approve': 'server/api/newsletter/approve.js',
   '/api/newsletter/shabbos': 'server/api/newsletter/shabbos.js',
-  '/api/newsletter/zmanim/upload': 'server/api/newsletter/zmanim/upload.js',
-  '/api/newsletter/zmanim/import': 'server/api/newsletter/zmanim/import.js',
-  '/api/newsletter/zmanim/confirm': 'server/api/newsletter/zmanim/confirm.js',
-  '/api/newsletter/zmanim/source': 'server/api/newsletter/zmanim/source.js',
+  '/api/newsletter/announcement': 'server/api/newsletter/announcement.js',
 }
 
 function response(raw) {

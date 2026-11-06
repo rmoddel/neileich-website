@@ -7,19 +7,12 @@ import draft from '../server/api/newsletter/draft.js'
 import bulkImport from '../server/api/newsletter/bulk-import.js'
 import approve from '../server/api/newsletter/approve.js'
 import shabbos from '../server/api/newsletter/shabbos.js'
-import zmanimUpload from '../server/api/newsletter/zmanim/upload.js'
-import zmanimImport from '../server/api/newsletter/zmanim/import.js'
-import zmanimConfirm from '../server/api/newsletter/zmanim/confirm.js'
-import zmanimSource from '../server/api/newsletter/zmanim/source.js'
+import announcement from '../server/api/newsletter/announcement.js'
 
 export const config = { maxDuration: 120 }
 
 const handlers = {
-  login, logout, ingest, session, issue, draft, approve, shabbos, 'bulk-import': bulkImport,
-  'zmanim-upload': zmanimUpload,
-  'zmanim-import': zmanimImport,
-  'zmanim-confirm': zmanimConfirm,
-  'zmanim-source': zmanimSource,
+  login, logout, ingest, session, issue, draft, approve, shabbos, announcement, 'bulk-import': bulkImport,
 }
 
 export default function handler(req, res) {

@@ -10,9 +10,9 @@ export async function getIssue(week, sql = newsletterDb()) {
   if (!validIssueWeek(week)) throw new Error('Invalid Friday issue date')
   const [issueRows, entries, publishedRows, shabbosRows, categories] = await Promise.all([
     sql`select issue_week::text as issue_week,status,date_line,intro,approved_at,approved_by,sent_at,pdf_url,error from newsletter_issues where issue_week=${week}::date`,
-    sql`select id::text as id,issue_week::text as issue_week,category,title,body,contact,event_date,price,flags,original_text,review_status,sort_order,processed_at,notes,version as revision from newsletter_announcements where issue_week=${week}::date order by sort_order,id`,
+    sql`select id::text as id,issue_week::text as issue_week,category,title,body,contact,event_date,price,flags,original_text,review_status,sort_order,processed_at,notes,is_important,is_test,version as revision from newsletter_announcements where issue_week=${week}::date and deleted_at is null order by sort_order,id`,
     sql`select snapshot,approved_at,approved_by from newsletter_published where issue_week=${week}::date`,
-    sql`select issue_week::text as issue_week,parsha_he,parsha_en,friday_date,shabbos_date,candle_lighting,friday_sunset,sof_zman_shema_gra,shabbos_ends,source,verification_status,notes,shacharis,sof_zman_shema_mga,shabbos_mincha,motzai_maariv,friday_mincha,friday_maariv,erev_shabbos_mincha from newsletter_zmanim where issue_week=${week}::date`,
+    sql`select issue_week::text as issue_week,parsha_he,parsha_en,friday_date,shabbos_date,candle_lighting,friday_sunset,sof_zman_shema_gra,shabbos_ends,source,verification_status,notes,shacharis,sof_zman_shema_mga,shabbos_mincha,motzai_maariv,friday_mincha,friday_maariv,erev_shabbos_mincha,original_values from newsletter_zmanim where issue_week=${week}::date`,
     sql`select category,print_order,usage from newsletter_categories where active=true order by print_order,category`,
   ])
   const snapshot = publishedRows[0]?.snapshot || null
@@ -36,6 +36,18 @@ export async function saveDraft(week, changes, sql = newsletterDb()) {
   if (!validIssueWeek(week) || !Array.isArray(changes) || changes.length > 300) throw new Error('Invalid draft')
   await sql`select save_newsletter_draft(${week}::date,${JSON.stringify(changes)}::jsonb)`
   return getIssue(week, sql)
+}
+
+export async function deleteAnnouncement(week, id, actor, sql = newsletterDb()) {
+  if (!validIssueWeek(week) || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id || '')) throw new Error('Invalid announcement')
+  const rows = await sql`select delete_newsletter_announcement(${week}::date,${id}::uuid,${actor}) as count`
+  return Number(rows[0]?.count || 0)
+}
+
+export async function deleteTestAnnouncements(week, expectedCount, actor, sql = newsletterDb()) {
+  if (!validIssueWeek(week) || !Number.isInteger(expectedCount) || expectedCount < 1) throw new Error('Invalid test cleanup request')
+  const rows = await sql`select delete_newsletter_test_announcements(${week}::date,${actor},${expectedCount}) as count`
+  return Number(rows[0]?.count || 0)
 }
 
 export async function importSpreadsheet(week, batchId, entries, sql = newsletterDb()) {

@@ -1,0 +1,43 @@
+.atc-paper { width: 8.5in; min-height: 0; padding: 0; background: transparent; box-shadow: none; }
+.atc-page { box-sizing: border-box; width: 8.5in; height: 11in; margin: 0 auto 20px; padding: .34in .42in .36in; background: #fff; box-shadow: 0 3px 20px #0002; display: flex; flex-direction: column; overflow: visible; }
+.atc-page .atc-masthead { display: flex; align-items: center; justify-content: center; min-height: 0; margin: 0 0 5pt; padding: 0 0 5pt; border-bottom: 2px solid #c69c36; }
+.atc-page .atc-masthead img { display: block; width: 4.3in; max-width: 100%; max-height: 1.45in; height: auto; object-fit: contain; }
+.atc-page .atc-masthead-continued { justify-content: space-between; }
+.atc-page .atc-masthead-continued img { width: 2.2in; max-height: .75in; }
+.atc-masthead-continued span { font: 8.5pt Arial,sans-serif; color: #5b6a78; }
+.atc-shabbos { margin: 0 0 6pt; padding: 4pt 6pt; gap: 2pt 8pt; font-size: 8.5pt; line-height: 1.25; }
+.atc-shabbos strong { font-size: 9pt; flex-basis: auto; }
+.atc-page-columns { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: .22in; flex: 1; min-height: 0; direction: rtl; }
+.atc-column { min-width: 0; direction: ltr; }
+.atc-column + .atc-column { border-inline-start: 1px solid #d6dce2; padding-inline-start: .11in; }
+.atc-section-heading { font: 700 11.5pt/1.15 Georgia,serif; color: #193454; border-bottom: 1px solid #bd9d56; margin: 0; padding: 4pt 0 3pt; }
+.atc-feature-heading { font-size: 13pt; }
+.atc-subheading { font: 700 9pt/1.2 Arial,'Noto Sans Hebrew',sans-serif; color: #42586e; margin: 0; padding: 4pt 0 1pt; }
+.atc-announcement { break-inside: avoid; page-break-inside: avoid; padding: 2pt 1pt 4pt; margin: 0; white-space: normal; }
+.atc-announcement p { font-size: var(--atc-copy-size); line-height: 1.24; margin: 0; white-space: pre-wrap; }
+.atc-announcement strong { color: #193454; }
+.atc-announcement small { font: 8.5pt/1.2 Arial,'Noto Sans Hebrew',sans-serif; margin: 1pt 0 0; white-space: pre-wrap; }
+.atc-measure { position: fixed; visibility: hidden; pointer-events: none; left: -10000px; top: 0; width: 3.61in; z-index: -1; }
+.atc-overflow-warning { background: #fff0dd; color: #7d3300; border-left: 4px solid #c77a1d; padding: 10px 12px; margin: 0 0 12px; font: 13px/1.4 Arial,sans-serif; }
+.atc-entry-row { display: flex; border-bottom: 1px solid #e2e8ee; }
+.atc-entry-list .atc-entry-row > button:first-child { flex: 1; min-width: 0; border: 0; }
+.atc-entry-list .atc-trash { flex: none; width: 33px; border: 0; background: white; color: #a33; display: flex; align-items: center; justify-content: center; padding: 5px; cursor: pointer; }
+.atc-entry-list .atc-trash:hover { background: #fff0ed; }
+.atc-entry-list .atc-trash:disabled { opacity: .45; cursor: default; }
+.atc-editor .atc-check { display: flex; align-items: center; gap: 8px; }
+.atc-editor .atc-check input { width: auto; margin: 0; }
+.atc-schedule-week { display: block; font-weight: 700; margin: 16px 0; }
+.atc-schedule-week input { display: block; margin-top: 5px; padding: 7px; border: 1px solid #aebbc8; border-radius: 4px; }
+.atc-schedule-table { border-collapse: collapse; width: min(700px,100%); margin: 16px 0; }
+.atc-schedule-table th,.atc-schedule-table td { text-align: left; border-bottom: 1px solid #dce4e9; padding: 7px 10px; }
+.atc-schedule-table th { width: 230px; color: #193454; }
+@media print {
+  @page { size: letter; margin: 0; }
+  .atc-page { width: 8.5in; height: 11in; margin: 0; padding: .34in .42in .36in; box-shadow: none; break-after: page; page-break-after: always; }
+  .atc-page:last-of-type { break-after: auto; page-break-after: auto; }
+  .atc-page-empty { display: none; }
+  .atc-overflow-warning,.atc-measure { display: none !important; }
+  .atc-page-columns { display: grid !important; grid-template-columns: minmax(0,1fr) minmax(0,1fr) !important; gap: .22in !important; }
+  .atc-announcement { cursor: auto; }
+  .atc-announcement:hover,.atc-announcement.is-selected { background: none; }
+}

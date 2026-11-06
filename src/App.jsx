@@ -14,6 +14,7 @@ import AroundTheCommons from './pages/AroundTheCommons'
 import AroundTheCommonsLogin from './pages/AroundTheCommonsLogin'
 import AtcZmanim from './pages/AtcZmanim'
 import AtcSpreadsheet from './pages/AtcSpreadsheet.jsx'
+import AtcPreviewFixture from './pages/AtcPreviewFixture.jsx'
 import './App.css'
 
 function App() {
@@ -35,6 +36,7 @@ function App() {
           <Route path="/around-the-commons" element={<AroundTheCommons />} />
           <Route path="/around-the-commons/import" element={<AtcSpreadsheet />} />
           <Route path="/around-the-commons/zmanim" element={<AtcZmanim />} />
+          {import.meta.env.DEV && <Route path="/__atc-print-preview" element={<AtcPreviewFixture />} />}
           <Route path="/atc" element={<Navigate to="/around-the-commons" replace />} />
         </Routes>
       </main>
