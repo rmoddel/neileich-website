@@ -52,9 +52,7 @@ function packSections(sections, heights, capacities) {
 export default function AtcNewsletter({ issue, entries, selected, onSelect }) {
   const sections = useMemo(() => assembleSections(entries, issue.categories), [entries, issue.categories])
   const shabbos = issue.shabbos
-  const [fontSize, setFontSize] = useState(fontSizes[0])
-  const [columns, setColumns] = useState([[]])
-  const [unfit, setUnfit] = useState([])
+  const [layout, setLayout] = useState({ sections: null, fontSize: fontSizes[0], columns: [[]], unfit: [] })
   const [fontRevision, setFontRevision] = useState(0)
   const measureRef = useRef(null)
   const pageOneRef = useRef(null)
@@ -83,10 +81,10 @@ export default function AtcNewsletter({ issue, entries, selected, onSelect }) {
     }
     // Layout is measured from the actual DOM and must update before the preview paints.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setFontSize(selectedSize)
-    setColumns(packed.columns)
-    setUnfit(packed.unfit)
+    setLayout({ sections, fontSize: selectedSize, columns: packed.columns, unfit: packed.unfit })
   }, [sections, fontRevision, shabbos])
+  // A deletion can remove an entire section. Never render column indexes from the previous list.
+  const { fontSize, columns, unfit } = layout.sections === sections ? layout : { fontSize: fontSizes[0], columns: [[]], unfit: [] }
   const overflow = (columns.length > 4 || unfit.length > 0) && fontSize === fontSizes.at(-1)
   const pages = Array.from({ length: Math.max(2, Math.ceil(columns.length / 2)) }, (_, index) => index)
   return <>
@@ -99,6 +97,7 @@ export default function AtcNewsletter({ issue, entries, selected, onSelect }) {
         <div className="atc-page-columns" ref={page === 0 ? pageOneRef : page === 1 ? pageTwoRef : undefined} dir="rtl">
           {[0, 1].map(side => <div className="atc-column" key={side} dir="ltr">{(columns[page * 2 + side] || []).map((block, index) => {
             const section = sections[block.sectionIndex]
+            if (!section || (block.type === 'entry' && !section.entries[block.entryIndex])) return null
             if (block.type === 'heading') return <h2 className={section.name === 'Neileich Updates' ? 'atc-section-heading atc-feature-heading' : 'atc-section-heading'} key={`${index}-h`}>{section.name}{block.continued ? ' · continued' : ''}</h2>
             if (block.type === 'subheading') return <h3 className="atc-subheading" key={`${index}-s`}>{block.label}</h3>
             return <Announcement key={`${index}-e`} entry={section.entries[block.entryIndex]} selected={selected} onSelect={onSelect} />

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import AtcNewsletter from './AtcNewsletter.jsx'
 import './AroundTheCommons.css'
 
@@ -27,5 +28,11 @@ const issue = {
 }
 
 export default function AtcPreviewFixture() {
-  return <div className="atc-shell"><div className="atc-preview"><AtcNewsletter issue={issue} entries={entries} /></div></div>
+  const [visibleEntries, setVisibleEntries] = useState(() => mode === 'delete' ? entries.filter(entry => entry.category !== 'Other community notices' || entry.id === '0-0') : entries)
+  useEffect(() => {
+    if (mode !== 'delete') return
+    const timer = setTimeout(() => setVisibleEntries(current => current.filter(entry => entry.id !== '0-0')), 100)
+    return () => clearTimeout(timer)
+  }, [])
+  return <div className="atc-shell"><div className="atc-preview"><AtcNewsletter issue={issue} entries={visibleEntries} /></div></div>
 }
