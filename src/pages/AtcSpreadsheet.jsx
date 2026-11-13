@@ -64,7 +64,7 @@ export default function AtcSpreadsheet() {
   }
   function reviewRows() {
     if (mapErrors.length) { setMessage(mapErrors.join(' ')); return }
-    const next = mappedRows(sourceRows, mapping, categories)
+    const next = mappedRows(sourceRows, mapping, categories, week)
     if (!next.length) { setMessage('No announcement rows were found.'); return }
     setRows(next); setBatchId(crypto.randomUUID()); setMessage('Review and correct every row before submitting. Nothing has been saved to Neon.')
   }
