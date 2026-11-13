@@ -1,11 +1,19 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { assembleSections } from './atcLayout.js'
+import { assembleFooter, assembleSections, bannerOrder, packSections } from './atcLayout.js'
 import './AtcNewsletter.css'
 
 const fontSizes = [10.5, 10, 9.5, 9, 8.5]
+const MAX_PAGES = 2
+// Small per-column allowance for sub-pixel rounding between measurement and the printed page.
+const SAFETY_PX = 3
+
+function selectable(entry, onSelect) {
+  if (!onSelect) return {}
+  return { onClick: () => onSelect(entry), role: 'button', tabIndex: 0, onKeyDown: event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelect(entry) } } }
+}
 
 function Announcement({ entry, selected, onSelect }) {
-  return <div className={`atc-announcement ${selected === entry ? 'is-selected' : ''}`} onClick={() => onSelect?.(entry)} role={onSelect ? 'button' : undefined} tabIndex={onSelect ? 0 : undefined} onKeyDown={event => { if (onSelect && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); onSelect(entry) } }}>
+  return <div className={`atc-announcement ${selected === entry ? 'is-selected' : ''}`} {...selectable(entry, onSelect)}>
     <p dir="auto">{entry.body}</p>
     {(entry.event_date || entry.price || entry.contact) && <small dir="auto">{[entry.event_date, entry.price, entry.contact].filter(Boolean).join(' · ')}</small>}
   </div>
@@ -21,125 +29,147 @@ function ShabbosStrip({ shabbos }) {
   </div>
 }
 
-function FeaturedSection({ section, selected, onSelect, sectionRef }) {
-  if (!section) return null
-  return <section className="atc-featured" ref={sectionRef} aria-label="Neileich Updates">
-    <h2>Neileich Updates</h2>
-    {section.entries.length === 0 ? (
-      <div className="atc-empty-section" aria-label="No Neileich Updates this week" />
-    ) : (
-      <div className="atc-featured-columns" dir="rtl">{section.entries.map((entry, index) => {
+function Masthead({ first, shabbos, onLoad }) {
+  return <header className={`atc-masthead ${first ? '' : 'atc-masthead-continued'}`}>
+    <img src="/around-the-commons-logo.png" alt={first ? 'Around the Commons · Lakewood Commons' : ''} onLoad={onLoad} />
+    {first ? <ShabbosStrip shabbos={shabbos} /> : <span>Continued</span>}
+  </header>
+}
+
+// Full-width band across the top of page 1 with two columns inside (Neileich Updates, Mazel Tovs).
+function BannerSection({ section, selected, onSelect }) {
+  const kind = section.name === 'Neileich Updates' ? 'atc-banner-featured' : 'atc-banner-mazel'
+  return <section className={`atc-banner ${kind}`} aria-label={section.name}>
+    <h2>{section.name}</h2>
+    {section.entries.length === 0
+      ? <div className="atc-empty-section" aria-label={`No ${section.name} this week`} />
+      : <div className="atc-banner-columns" dir="rtl">{section.entries.map((entry, index) => {
         const group = section.subgroups?.[index]
         const showGroup = group && (index === 0 || group !== section.subgroups[index - 1])
-        return <div className="atc-featured-item" key={entry.id || index} dir="ltr">
+        return <div className="atc-banner-item" key={entry.id || index} dir="ltr">
           {showGroup && <h3 className="atc-subheading">{group}</h3>}
           <Announcement entry={entry} selected={selected} onSelect={onSelect} />
         </div>
-      })}</div>
-    )}
+      })}</div>}
   </section>
 }
 
-function packSections(sections, heights, capacities) {
-  // Always start from column 0 (right column in RTL) to maintain section priority
-  // Column 0 = page 1 right, Column 1 = page 1 left, Column 2 = page 2 right, etc.
-  const columns = [[]]
-  const unfit = []
-  let column = 0, used = 0, currentSection = -1, currentGroup = ''
-  function capacity(index) { return capacities[Math.min(Math.floor(index / 2), capacities.length - 1)] }
-  for (let sectionIndex = 0; sectionIndex < sections.length; sectionIndex++) {
-    const section = sections[sectionIndex]
-    // Empty sections still need their heading rendered
-    if (section.entries.length === 0) {
-      const headingHeight = heights[`h-${sectionIndex}`] || 0
-      const emptyHeight = heights[`empty-${sectionIndex}`] || 20
-      const needed = headingHeight + emptyHeight
-      if (used && used + needed > capacity(column)) {
-        column += 1; columns.push([]); used = 0; currentSection = -1; currentGroup = ''
-      }
-      columns[column].push({ type: 'heading', sectionIndex, continued: false })
-      columns[column].push({ type: 'empty', sectionIndex })
-      used += needed
-      currentSection = sectionIndex
-      continue
-    }
-    for (let entryIndex = 0; entryIndex < section.entries.length; entryIndex++) {
-      const group = section.subgroups?.[entryIndex] || ''
-      let headingNeeded = currentSection !== sectionIndex
-      let groupNeeded = Boolean(group) && (headingNeeded || currentGroup !== group)
-      let needed = (headingNeeded ? heights[`h-${sectionIndex}`] || 0 : 0) + (groupNeeded ? heights[`s-${sectionIndex}-${entryIndex}`] || 0 : 0) + (heights[`e-${sectionIndex}-${entryIndex}`] || 0)
-      if (used && used + needed > capacity(column)) {
-        column += 1; columns.push([]); used = 0; currentSection = -1; currentGroup = ''
-        headingNeeded = true; groupNeeded = Boolean(group)
-        needed = (heights[`h-${sectionIndex}`] || 0) + (groupNeeded ? heights[`s-${sectionIndex}-${entryIndex}`] || 0 : 0) + (heights[`e-${sectionIndex}-${entryIndex}`] || 0)
-      }
-      if (needed > capacity(column)) unfit.push(section.entries[entryIndex])
-      if (headingNeeded) columns[column].push({ type: 'heading', sectionIndex, continued: entryIndex > 0 })
-      if (groupNeeded) columns[column].push({ type: 'subheading', sectionIndex, entryIndex, label: group })
-      columns[column].push({ type: 'entry', sectionIndex, entryIndex })
-      used += needed
-      currentSection = sectionIndex; currentGroup = group
-    }
-  }
-  return { columns, unfit }
+function Footer({ entries, selected, onSelect }) {
+  if (!entries.length) return null
+  return <footer className="atc-footer">{entries.map((entry, index) => <div key={entry.id || index} className={`atc-footer-item ${selected === entry ? 'is-selected' : ''}`} dir="auto" {...selectable(entry, onSelect)}>
+    {entry.title && <strong>{entry.title}: </strong>}{entry.body}{[entry.price, entry.contact].filter(Boolean).map(value => ` · ${value}`).join('')}
+  </div>)}</footer>
+}
+
+// Height of a measured block including its own margins (wrappers are display: flow-root).
+const blockHeight = node => node?.getBoundingClientRect().height || 0
+
+// Arrangements tried in order: both bands across the top, then Mazel Tovs moved into the columns
+// (a band cannot split across columns or pages, so a very long Mazel Tovs list must flow instead).
+function arrangements(sections) {
+  const byName = name => sections.find(section => section.name === name)
+  const rest = sections.filter(section => !bannerOrder.includes(section.name))
+  const [lead, ...others] = bannerOrder.map(byName).filter(Boolean)
+  return [
+    { banners: [lead, ...others].filter(Boolean), regular: rest },
+    ...(others.length ? [{ banners: [lead], regular: [...others, ...rest] }] : []),
+  ]
 }
 
 export default function AtcNewsletter({ issue, entries, selected, onSelect }) {
   const sections = useMemo(() => assembleSections(entries, issue.categories), [entries, issue.categories])
-  const featured = sections[0]?.name === 'Neileich Updates' ? sections[0] : null
-  const regularSections = useMemo(() => sections.filter(section => section.name !== 'Neileich Updates'), [sections])
+  const footer = useMemo(() => assembleFooter(entries), [entries])
+  const options = useMemo(() => arrangements(sections), [sections])
+  // Every section that might print in a column; all are measured for each font size.
+  const columnCandidates = options.at(-1).regular
   const shabbos = issue.shabbos
-  const [layout, setLayout] = useState({ sections: null, fontSize: fontSizes[0], columns: [[]], unfit: [] })
+  const [layout, setLayout] = useState({ sections: null })
+  // Extra height removed from every column after a rendered column was found running past its page.
+  const [slack, setSlack] = useState({ sections: null, px: 0 })
   const [fontRevision, setFontRevision] = useState(0)
+  const articleRef = useRef(null)
   const measureRef = useRef(null)
-  const featureRef = useRef(null)
-  const pageOneRef = useRef(null)
-  const pageTwoRef = useRef(null)
-  useLayoutEffect(() => { document.fonts?.ready.then(() => setFontRevision(value => value + 1)) }, [])
+  const probeOneRef = useRef(null)
+  const probeTwoRef = useRef(null)
+  const refresh = () => setFontRevision(value => value + 1)
+  useLayoutEffect(() => { document.fonts?.ready.then(refresh) }, [])
+
   useLayoutEffect(() => {
-    if (!measureRef.current || !pageOneRef.current || !pageTwoRef.current) return
-    const pageOneAvailable = pageOneRef.current.clientHeight + (featureRef.current?.getBoundingClientRect().height || 0)
-    const pageTwoAvailable = pageTwoRef.current.clientHeight
-    let packed = { columns: [[]], unfit: [] }, selectedSize = fontSizes.at(-1), selectedHeights = {}, selectedCapacities = [pageOneAvailable, pageTwoAvailable]
-    for (const size of fontSizes) {
-      measureRef.current.style.setProperty('--atc-copy-size', `${size}pt`)
-      const featureHeight = measureRef.current.querySelector('.atc-featured')?.getBoundingClientRect().height || 0
-      const capacities = [Math.max(0, pageOneAvailable - featureHeight), pageTwoAvailable]
-      const heights = Object.fromEntries([...measureRef.current.querySelectorAll('[data-measure-key]')].map(node => [node.dataset.measureKey, node.getBoundingClientRect().height]))
-      packed = packSections(regularSections, heights, capacities)
-      if (featureHeight > pageOneAvailable) packed.unfit.push(...(featured?.entries || []))
-      selectedSize = size
-      selectedHeights = heights
-      selectedCapacities = capacities
-      if (packed.columns.length <= 4 && !packed.unfit.length) break
+    const measure = measureRef.current
+    if (!measure || !probeOneRef.current || !probeTwoRef.current) return
+    const slackPx = slack.sections === sections ? slack.px : 0
+    // Column area of an otherwise empty page 1 (masthead + Shabbos strip) and of a continuation page.
+    const baseOne = probeOneRef.current.clientHeight
+    const baseTwo = probeTwoRef.current.clientHeight
+    const fits = (result, pageLimit = MAX_PAGES) => result.columns.length <= pageLimit * 2 && !result.unfit.length
+    let best = null
+    search: for (const option of options) {
+      for (const size of fontSizes) {
+        measure.style.setProperty('--atc-copy-size', `${size}pt`)
+        const bannerHeight = option.banners.reduce((sum, section) => sum + blockHeight(measure.querySelector(`[data-measure-banner="${CSS.escape(section.name)}"]`)), 0)
+        const footerHeight = blockHeight(measure.querySelector('[data-measure-footer]'))
+        const heights = Object.fromEntries([...measure.querySelectorAll('[data-measure-key]')].map(node => [node.dataset.measureKey, Math.ceil(blockHeight(node))]))
+        const pageOne = baseOne - bannerHeight - SAFETY_PX - slackPx
+        const continuation = baseTwo - SAFETY_PX - slackPx
+        // The footer prints on the last page: try a single page first, then two pages.
+        let capacities = [pageOne - footerHeight]
+        let packed = packSections(option.regular, heights, capacities)
+        if (!fits(packed, 1)) {
+          capacities = [pageOne, continuation - footerHeight]
+          packed = packSections(option.regular, heights, capacities)
+        }
+        if (bannerHeight + footerHeight > baseOne - 40) packed.unfit.push(...option.banners.flatMap(section => section.entries))
+        best = { ...option, fontSize: size, columns: packed.columns, unfit: packed.unfit, heights, capacities }
+        if (fits(best)) break search
+      }
     }
-    if (packed.columns.length > 2 && packed.columns.length <= 4 && !packed.unfit.length) {
-      let low = selectedCapacities[1] * .45, high = selectedCapacities[1]
-      for (let attemptIndex = 0; attemptIndex < 8; attemptIndex++) {
+    // Balance page 2: use the smallest page-2 column height that still fits everything on two pages.
+    if (best.capacities.length === 2 && best.columns.length > 2 && fits(best)) {
+      let low = best.capacities[1] * .45, high = best.capacities[1]
+      for (let attempt = 0; attempt < 8; attempt++) {
         const middle = (low + high) / 2
-        const candidate = packSections(regularSections, selectedHeights, [selectedCapacities[0], middle])
-        if (candidate.columns.length <= 4 && !candidate.unfit.length) { packed = candidate; high = middle }
+        const candidate = packSections(best.regular, best.heights, [best.capacities[0], middle])
+        if (fits(candidate)) { best.columns = candidate.columns; high = middle }
         else low = middle
       }
     }
     // Layout is measured from the actual DOM and must update before the preview paints.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLayout({ sections: regularSections, fontSize: selectedSize, columns: packed.columns, unfit: packed.unfit })
-  }, [regularSections, featured, fontRevision, shabbos])
-  // A deletion can remove an entire section. Never render column indexes from the previous list.
-  const { fontSize, columns, unfit } = layout.sections === regularSections ? layout : { fontSize: fontSizes[0], columns: [[]], unfit: [] }
-  const overflow = (columns.length > 4 || unfit.length > 0) && fontSize === fontSizes.at(-1)
+    setLayout({ sections, banners: best.banners, regular: best.regular, fontSize: best.fontSize, columns: best.columns, unfit: best.unfit })
+  }, [sections, options, footer, fontRevision, shabbos, slack])
+
+  // Page-break guard: after layout, verify no column runs past the bottom of its page.
+  // If one does (font fallback, rounding, wrapped "continued" headings...), re-pack with less room.
+  useLayoutEffect(() => {
+    if (layout.sections !== sections || !articleRef.current) return
+    let worst = 0
+    for (const columnsNode of articleRef.current.querySelectorAll('.atc-page:not(.atc-probe) .atc-page-columns')) {
+      const limit = columnsNode.getBoundingClientRect().bottom
+      for (const column of columnsNode.children) {
+        const last = column.lastElementChild
+        if (last) worst = Math.max(worst, last.getBoundingClientRect().bottom + parseFloat(getComputedStyle(last).marginBottom || 0) - limit)
+      }
+    }
+    const current = slack.sections === sections ? slack.px : 0
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (worst > .5 && current < 400) setSlack({ sections, px: current + Math.ceil(worst) + 2 })
+  }, [layout, sections, slack])
+
+  // A deletion can remove an entire section. Never render column indexes from a previous list.
+  const current = layout.sections === sections ? layout : { banners: options[0].banners, regular: options[0].regular, fontSize: fontSizes[0], columns: [[]], unfit: [] }
+  const { banners, regular, fontSize, columns, unfit } = current
+  const overflow = columns.length > MAX_PAGES * 2 || unfit.length > 0
   const pages = Array.from({ length: Math.max(1, Math.ceil(columns.length / 2)) }, (_, index) => index)
   return <>
     {overflow && <p className="atc-overflow-warning" role="alert">This issue cannot fit within two Letter pages at the minimum readable 8.5 pt. Shorten or remove announcements before approval. Check: {[...new Set([...unfit, ...[...entries].sort((a, b) => (b.body?.length || 0) - (a.body?.length || 0)).slice(0, 3)])].slice(0, 3).map(entry => entry.title || entry.body?.slice(0, 35)).join('; ')}.</p>}
     {shabbos?.verification_status !== 'VERIFIED' && <p className="atc-overflow-warning" role="status">Shabbos times are awaiting administrator verification.</p>}
-    <article aria-label="Printable newsletter" style={{ '--atc-copy-size': `${fontSize}pt` }}>
+    <article className="atc-newsletter" ref={articleRef} aria-label="Printable newsletter" style={{ '--atc-copy-size': `${fontSize}pt` }}>
       {pages.map(page => <div className="atc-page" key={page}>
-        <header className={`atc-masthead ${page ? 'atc-masthead-continued' : ''}`}><img src="/around-the-commons-logo.png" alt="Around the Commons · Lakewood Commons" onLoad={page === 0 ? () => setFontRevision(value => value + 1) : undefined} />{page === 0 ? <ShabbosStrip shabbos={shabbos} /> : <span>Continued</span>}</header>
-        {page === 0 && <FeaturedSection section={featured} selected={selected} onSelect={onSelect} sectionRef={featureRef} />}
-        <div className="atc-page-columns" ref={page === 0 ? pageOneRef : undefined} dir="rtl">
+        <Masthead first={page === 0} shabbos={shabbos} onLoad={page === 0 ? refresh : undefined} />
+        {page === 0 && banners.map(section => <BannerSection key={section.name} section={section} selected={selected} onSelect={onSelect} />)}
+        <div className="atc-page-columns" dir="rtl">
           {[0, 1].map(side => <div className="atc-column" key={side} dir="ltr">{(columns[page * 2 + side] || []).map((block, index) => {
-            const section = regularSections[block.sectionIndex]
+            const section = regular[block.sectionIndex]
             if (!section || (block.type === 'entry' && !section.entries[block.entryIndex])) return null
             if (block.type === 'heading') return <h2 className="atc-section-heading" key={`${index}-h`}>{section.name}{block.continued ? ' · continued' : ''}</h2>
             if (block.type === 'subheading') return <h3 className="atc-subheading" key={`${index}-s`}>{block.label}</h3>
@@ -147,18 +177,25 @@ export default function AtcNewsletter({ issue, entries, selected, onSelect }) {
             return <Announcement key={`${index}-e`} entry={section.entries[block.entryIndex]} selected={selected} onSelect={onSelect} />
           })}</div>)}
         </div>
+        {page === pages.length - 1 && <Footer entries={footer} selected={selected} onSelect={onSelect} />}
       </div>)}
-      <div className="atc-page-capacity-probe" aria-hidden="true"><header className="atc-masthead atc-masthead-continued"><img src="/around-the-commons-logo.png" alt="" onLoad={() => setFontRevision(value => value + 1)} /><span>Continued</span></header><div className="atc-page-columns" ref={pageTwoRef} /></div>
+      <div className="atc-page atc-probe" aria-hidden="true"><Masthead first shabbos={shabbos} onLoad={refresh} /><div className="atc-page-columns" ref={probeOneRef} /></div>
+      <div className="atc-page atc-probe" aria-hidden="true"><Masthead first={false} onLoad={refresh} /><div className="atc-page-columns" ref={probeTwoRef} /></div>
       <div className="atc-measure" ref={measureRef} aria-hidden="true">
-        <FeaturedSection section={featured} />
-        {regularSections.map((section, sectionIndex) => <div key={section.name}>
-          <h2 className="atc-section-heading" data-measure-key={`h-${sectionIndex}`}>{section.name}</h2>
-          {section.entries.length === 0 && <div className="atc-empty-section" data-measure-key={`empty-${sectionIndex}`} />}
-          {section.entries.map((entry, entryIndex) => <div key={entry.id || entryIndex}>
-            {section.subgroups && <h3 className="atc-subheading" data-measure-key={`s-${sectionIndex}-${entryIndex}`}>{section.subgroups[entryIndex]}</h3>}
-            <div data-measure-key={`e-${sectionIndex}-${entryIndex}`}><Announcement entry={entry} /></div>
+        {options[0].banners.map(section => <div key={section.name} data-measure-banner={section.name}><BannerSection section={section} /></div>)}
+        {footer.length > 0 && <div data-measure-footer><Footer entries={footer} /></div>}
+        {/* Measured in the narrower (left) column so every block's height is a safe upper bound. */}
+        <div className="atc-page-columns"><div className="atc-column" /><div className="atc-column">
+          {columnCandidates.map(section => <div key={section.name}>
+            <div data-measure-key={`h-${section.name}`}><h2 className="atc-section-heading">{section.name}</h2></div>
+            <div data-measure-key={`hc-${section.name}`}><h2 className="atc-section-heading">{section.name} · continued</h2></div>
+            {section.entries.length === 0 && <div data-measure-key={`empty-${section.name}`}><div className="atc-empty-section" /></div>}
+            {section.entries.map((entry, entryIndex) => <div key={entry.id || entryIndex}>
+              {section.subgroups && <div data-measure-key={`s-${section.name}-${entryIndex}`}><h3 className="atc-subheading">{section.subgroups[entryIndex]}</h3></div>}
+              <div data-measure-key={`e-${section.name}-${entryIndex}`}><Announcement entry={entry} /></div>
+            </div>)}
           </div>)}
-        </div>)}
+        </div></div>
       </div>
     </article>
   </>

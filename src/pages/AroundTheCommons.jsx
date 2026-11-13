@@ -5,7 +5,7 @@ import AtcNewsletter from './AtcNewsletter.jsx'
 import { displayCategory } from './atcLayout.js'
 import './AroundTheCommons.css'
 
-const defaults = ['Neileich Updates', 'Mazel Tov', 'Community Updates', 'Events & Shiurim', 'Classifieds', 'Looking For', 'Selling / For Rent', 'Lost & Found', 'Other community notices']
+const defaults = ['Neileich Updates', 'Mazel Tov', 'Community Updates', 'Events & Shiurim', 'Classifieds', 'Looking For', 'Selling / For Rent', 'Lost & Found', 'Other community notices', 'Publication Info']
 const shabbosFields = [['parsha_he', 'Parsha (Hebrew)'], ['parsha_en', 'Parsha (English)'], ['candle_lighting', 'Candle lighting'], ['friday_mincha', 'Friday Mincha'], ['friday_maariv', 'Friday Maariv'], ['shacharis', 'Shacharis'], ['sof_zman_shema_gra', 'Sof zman Shema (GRA)'], ['sof_zman_shema_mga', 'Sof zman Shema (MGA)'], ['shabbos_mincha', 'Shabbos Mincha'], ['motzai_maariv', 'Motzai Shabbos Maariv'], ['friday_sunset', 'Friday sunset'], ['shabbos_ends', 'Shabbos ends'], ['source', 'Official source'], ['notes', 'Notes']]
 const emptyEntry = (category, order) => ({ id: '', category, title: '', body: '', contact: '', event_date: '', price: '', flags: '', notes: '', review_status: 'NEEDS_REVIEW', sort_order: String(order), is_important: false, is_test: false })
 async function api(path, options) {

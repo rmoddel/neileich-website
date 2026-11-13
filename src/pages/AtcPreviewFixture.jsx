@@ -20,7 +20,12 @@ const entries = categoryOrder.flatMap((category, categoryIndex) => Array.from({ 
   review_status: 'READY',
   is_important: category === 'Community Updates' && index === 1,
   sort_order: categoryIndex * 100 + index,
-}))).reverse()
+}))).concat([
+  ['Submissions', 'Text message only; no voice messages.'],
+  ['Advertising', 'Local businesses, services and sales. $10 per ad, due before Shabbos.'],
+  ['Delivery', 'Delivery to every house every week is not guaranteed; this is a community project.'],
+].map(([title, body], index) => ({ id: `footer-${index}`, category: 'Publication Info', title, body, review_status: 'READY', sort_order: index })))
+  .reverse()
 const issue = {
   week: '2026-11-06',
   categories: categoryOrder.map((category, print_order) => ({ category, print_order })),
